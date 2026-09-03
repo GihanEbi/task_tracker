@@ -2,7 +2,6 @@
 
 import { useWorkTime } from "@/lib/scheduling/context";
 import { fmtClock, fmtShort, keyToDate, relDay } from "@/lib/scheduling/dates";
-import { Badge } from "@/components/ui/Badge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export function TaskDetailPanel() {
@@ -14,8 +13,7 @@ export function TaskDetailPanel() {
 
   const isMine = task.userId === store.state.currentUserId;
   const owner = store.userById(task.userId)!;
-  const dstat = store.computeDeadlineStatus(task);
-  const remaining = Math.max(0, task.estimatedHours - task.completedHours);
+  const viewerIsAdmin = store.userById(store.state.currentUserId)?.isAdmin ?? false;
   const tblocks = store.state.blocks.filter((b) => b.taskId === taskId);
   const hist = store.historyForTask(taskId);
 
@@ -30,14 +28,13 @@ export function TaskDetailPanel() {
         <div className="detail-head">
           <div className="detail-head-top">
             <div>
-              <div className="detail-project">{task.project}</div>
+              <div className="detail-project">{task.isFreeSlot ? "Free time" : task.project}</div>
               <div className="detail-title">{task.title}</div>
             </div>
             <button className="modal-close" onClick={close}>
               ✕
             </button>
           </div>
-          <Badge tone={dstat.level}>{dstat.label}</Badge>
         </div>
         <div className="detail-body">
           {!isMine && (
@@ -59,36 +56,17 @@ export function TaskDetailPanel() {
             </div>
           )}
           <div className="detail-section">
-            <h4>PROGRESS</h4>
-            <div className="detail-stats">
-              <div>
-                <div className="detail-stat-label">Estimated</div>
-                <div className="detail-stat-value">{task.estimatedHours}h</div>
-              </div>
-              <div>
-                <div className="detail-stat-label">Completed</div>
-                <div className="detail-stat-value">{task.completedHours}h</div>
-              </div>
-              <div>
-                <div className="detail-stat-label">Remaining</div>
-                <div className="detail-stat-value">{remaining}h</div>
-              </div>
-            </div>
-          </div>
-          <div className="detail-section">
             <h4>DETAILS</h4>
             <div className="detail-row">
-              <span className="detail-row-label">Deadline</span>
-              <span>{fmtShort(keyToDate(task.deadline))}</span>
+              <span className="detail-row-label">Estimated</span>
+              <span>{task.estimatedHours}h</span>
             </div>
-            <div className="detail-row">
-              <span className="detail-row-label">Priority</span>
-              <span>{task.priority}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-row-label">Status</span>
-              <span>{task.status}</span>
-            </div>
+            {task.priority && (
+              <div className="detail-row">
+                <span className="detail-row-label">Priority</span>
+                <span>{task.priority}</span>
+              </div>
+            )}
           </div>
           <div className="detail-section">
             <h4>SCHEDULE</h4>
@@ -107,22 +85,11 @@ export function TaskDetailPanel() {
                   <span className="detail-row-label">No blocks scheduled yet</span>
                 </div>
               )
-            ) : task.assignedDay ? (
-              <div className="detail-row">
-                <span className="detail-row-label">
-                  {relDay(task.assignedDay)} ({fmtShort(keyToDate(task.assignedDay))})
-                </span>
-                <span>{task.estimatedHours}h planned</span>
-              </div>
             ) : (
-              <div className="detail-row">
-                <span className="detail-row-label">Not yet scheduled</span>
+              <div className="empty-hint" style={{ padding: 0 }}>
+                Managed on {owner.name.split(" ")[0]}&apos;s own schedule.
               </div>
             )}
-          </div>
-          <div className="detail-section">
-            <h4>DEADLINE RISK</h4>
-            <div className="detail-desc">{dstat.detail}</div>
           </div>
           {isMine && (
             <div className="detail-section">
@@ -145,14 +112,8 @@ export function TaskDetailPanel() {
         <div className="detail-foot">
           {isMine ? (
             <>
-              <button
-                className="btn secondary"
-                onClick={() => {
-                  store.markComplete(taskId);
-                  close();
-                }}
-              >
-                Mark complete
+              <button className="btn secondary" onClick={() => store.openEditTaskModal(taskId)}>
+                Edit task
               </button>
               <button
                 className="btn danger"
@@ -164,9 +125,13 @@ export function TaskDetailPanel() {
                 Delete task
               </button>
             </>
+          ) : viewerIsAdmin ? (
+            <button className="btn secondary" onClick={() => store.openAdminTaskModal({ userId: task.userId, taskId: task.id })}>
+              Edit task
+            </button>
           ) : (
             <div className="empty-hint" style={{ padding: 0 }}>
-              Viewing as admin — {owner.name.split(" ")[0]} manages this task from their own account.
+              Read-only — {owner.name.split(" ")[0]} manages this task from their own account.
             </div>
           )}
         </div>

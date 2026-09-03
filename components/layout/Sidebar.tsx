@@ -111,6 +111,7 @@ export function Sidebar() {
   const store = useWorkTime();
   const s = store.daySummary(TODAY_KEY);
   const pct = s.capacity > 0 ? Math.min(100, Math.round((s.scheduled / s.capacity) * 100)) : 0;
+  const isAdmin = store.userById(store.state.currentUserId)?.isAdmin ?? false;
 
   return (
     <aside className="sidebar">
@@ -128,13 +129,17 @@ export function Sidebar() {
             <span>{item.label}</span>
           </Link>
         ))}
-        <div className="nav-divider">Admin</div>
-        {ADMIN_NAV_ITEMS.map((item) => (
-          <Link key={item.view} href={item.href} className={`nav-item${pathname === item.href ? " active" : ""}`}>
-            {item.icon}
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {isAdmin && (
+          <>
+            <div className="nav-divider">Admin</div>
+            {ADMIN_NAV_ITEMS.map((item) => (
+              <Link key={item.view} href={item.href} className={`nav-item${pathname === item.href ? " active" : ""}`}>
+                {item.icon}
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </>
+        )}
       </nav>
       <div className="sidebar-foot">
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>

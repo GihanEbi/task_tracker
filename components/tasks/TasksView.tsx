@@ -1,7 +1,7 @@
 "use client";
 
 import { useWorkTime } from "@/lib/scheduling/context";
-import { keyToDate, fmtShort, relDay } from "@/lib/scheduling/dates";
+import { fmtShort, keyToDate } from "@/lib/scheduling/dates";
 import { Topbar } from "@/components/layout/Topbar";
 
 export function TasksView() {
@@ -9,7 +9,7 @@ export function TasksView() {
   const tasks = store
     .tasksForUser(store.state.currentUserId)
     .slice()
-    .sort((a, b) => keyToDate(a.deadline).getTime() - keyToDate(b.deadline).getTime());
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <>
@@ -21,8 +21,7 @@ export function TasksView() {
               <th>Task</th>
               <th>Project</th>
               <th>Duration</th>
-              <th>Deadline</th>
-              <th>Status</th>
+              <th>Priority</th>
               <th>Schedule</th>
             </tr>
           </thead>
@@ -32,20 +31,17 @@ export function TasksView() {
               let schedule = "Unscheduled";
               if (tblocks.length) {
                 const earliest = tblocks.slice().sort((a, b) => a.day.localeCompare(b.day))[0];
-                schedule = relDay(earliest.day) + (tblocks.length > 1 ? ` +${tblocks.length - 1} more` : "");
+                schedule = fmtShort(keyToDate(earliest.day)) + (tblocks.length > 1 ? ` +${tblocks.length - 1} more` : "");
               }
               return (
-                <tr key={task.id} onClick={() => store.openDetail(task.id)}>
+                <tr key={task.id} className={task.isFreeSlot ? "is-free-slot" : undefined} onClick={() => store.openDetail(task.id)}>
                   <td>
                     <div className="task-title-cell">{task.title}</div>
                     {task.description && <div className="task-desc-cell">{task.description}</div>}
                   </td>
-                  <td>{task.project}</td>
+                  <td>{task.isFreeSlot ? <span className="badge b-slot">Free time</span> : task.project}</td>
                   <td>{task.estimatedHours}h</td>
-                  <td>{fmtShort(keyToDate(task.deadline))}</td>
-                  <td>
-                    <span className="badge b-neutral">{task.status}</span>
-                  </td>
+                  <td>{task.priority ? <span className="badge b-neutral">{task.priority}</span> : "—"}</td>
                   <td>{schedule}</td>
                 </tr>
               );

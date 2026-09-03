@@ -1,7 +1,7 @@
 import * as engine from "./engine";
 import * as actions from "./actions";
 import { dkey, fmtShort, keyToDate, nextWorkday, relDay, TODAY_KEY } from "./dates";
-import { DaySummary, DeadlineStatus, HistoryEntry, Priority, ProjectStats, ScheduleBlock, ScheduleItem, Task, User, WorkloadSummary, WorkTimeState } from "./types";
+import { DaySummary, HistoryEntry, Priority, ProjectStats, ScheduleBlock, ScheduleItem, Task, User, WorkloadSummary, WorkTimeState } from "./types";
 
 export interface ToastItem {
   id: string;
@@ -21,6 +21,25 @@ export interface QuickInsertState {
   anchor: { left: number; top: number; bottom: number; right: number };
 }
 
+export interface AdminTaskModalState {
+  userId: string;
+  taskId?: string; // absent = create, present = edit
+}
+
+export interface AdminTaskInput {
+  title: string;
+  project?: string;
+  description: string;
+  priority?: Priority;
+  isFreeSlot: boolean;
+  estimatedHours: number;
+  reassignTo?: string; // edit mode only — new owner
+}
+
+export interface EditTaskModalState {
+  taskId: string;
+}
+
 export interface UIState {
   addTask: AddTaskModalState | null;
   addTaskKey: number;
@@ -33,15 +52,19 @@ export interface UIState {
   taskDetail: string | null;
   userDetail: string | null;
   projectDetail: string | null;
+  adminTask: AdminTaskModalState | null;
+  adminTaskKey: number;
+  editTask: EditTaskModalState | null;
+  editTaskKey: number;
 }
 
 export interface CreateTaskInput {
   title: string;
-  project: string;
+  project?: string;
   description: string;
-  priority: Priority;
+  priority?: Priority;
+  isFreeSlot: boolean;
   duration: number;
-  deadline: string;
   day: string;
   position: string; // block id, or "end"
 }
@@ -63,6 +86,10 @@ export class WorkTimeStore {
     taskDetail: null,
     userDetail: null,
     projectDetail: null,
+    adminTask: null,
+    adminTaskKey: 0,
+    editTask: null,
+    editTaskKey: 0,
   };
   toasts: ToastItem[] = [];
 
@@ -129,17 +156,17 @@ export class WorkTimeStore {
   blockLabel(block: ScheduleBlock): string {
     return engine.blockLabel(this.state, block);
   }
-  computeDeadlineStatus(task: Task): DeadlineStatus {
-    return engine.computeDeadlineStatus(this.state, task);
+  summaryForUserDay(dayKey: string): WorkloadSummary {
+    return engine.summaryForUserDay(this.state, dayKey);
   }
-  summaryForUserDay(userId: string, dayKey: string): WorkloadSummary {
-    return engine.summaryForUserDay(this.state, userId, dayKey);
-  }
-  scheduleItemsForUserDay(userId: string, dayKey: string): ScheduleItem[] {
-    return engine.scheduleItemsForUserDay(this.state, userId, dayKey);
+  scheduleItemsForUserDay(dayKey: string): ScheduleItem[] {
+    return engine.scheduleItemsForUserDay(this.state, dayKey);
   }
   tasksForUser(userId: string): Task[] {
     return engine.tasksForUser(this.state, userId);
+  }
+  todayBucketForUser(userId: string) {
+    return engine.todayBucketForUser(this.state, userId, TODAY_KEY);
   }
   projectStats(projectName: string): ProjectStats {
     return engine.projectStats(this.state, projectName);
@@ -179,17 +206,20 @@ export class WorkTimeStore {
 
     this.runOptimistic(
       () => {
+        const now = new Date().toISOString();
         this.state.tasks.push({
           id: taskId,
           title: input.title,
-          project: input.project,
+          project: input.isFreeSlot ? "" : (input.project ?? ""),
           description: input.description,
           estimatedHours: input.duration,
-          completedHours: 0,
-          deadline: input.deadline,
-          priority: input.priority,
-          status: "Planned",
+          priority: input.isFreeSlot ? null : (input.priority ?? null),
+          isFreeSlot: input.isFreeSlot,
           userId: this.state.currentUserId,
+          createdAt: now,
+          createdBy: this.state.currentUserId,
+          updatedAt: now,
+          updatedBy: this.state.currentUserId,
         });
 
         let order: number;
@@ -253,18 +283,29 @@ export class WorkTimeStore {
     );
   }
 
-  markComplete(taskId: string) {
+  updateTask(taskId: string, input: { title: string; project?: string; description: string; priority?: Priority; isFreeSlot: boolean; duration: number }) {
     const task = this.taskById(taskId);
     if (!task) return;
 
     this.runOptimistic(
       () => {
-        task.completedHours = task.estimatedHours;
-        task.status = "Completed";
-        this.addToast(`"${task.title}" marked complete.`);
+        task.title = input.title;
+        task.project = input.isFreeSlot ? "" : (input.project ?? "");
+        task.description = input.description;
+        task.priority = input.isFreeSlot ? null : (input.priority ?? null);
+        task.isFreeSlot = input.isFreeSlot;
+        task.estimatedHours = input.duration;
+        task.updatedAt = new Date().toISOString();
+        task.updatedBy = this.state.currentUserId;
+
+        const tblocks = this.state.blocks.filter((b) => b.taskId === taskId);
+        if (tblocks.length === 1) tblocks[0].duration = input.duration;
+
+        this.recalcAll(true);
+        this.addToast(`"${input.title}" updated.`);
       },
-      actions.markCompleteAction(taskId),
-      `Unable to mark "${task.title}" complete. Please try again.`
+      actions.updateTaskAction({ taskId, ...input }),
+      `Unable to update "${task.title}". Please try again — your previous schedule has been restored.`
     );
   }
 
@@ -329,11 +370,98 @@ export class WorkTimeStore {
 
     this.runOptimistic(
       () => {
-        this.state.users.push({ id, name: input.name, role: input.role, department: input.department, email: input.email, capacity: input.capacity, color });
+        this.state.users.push({ id, name: input.name, role: input.role, department: input.department, email: input.email, capacity: input.capacity, color, isAdmin: false });
         this.addToast(`"${input.name}" added to the team.`);
       },
       actions.addUserAction({ id, ...input }),
       `Unable to add "${input.name}". Only admins can add team members.`
+    );
+  }
+
+  setUserAdmin(userId: string, isAdmin: boolean) {
+    const user = this.userById(userId);
+    if (!user) return;
+
+    this.runOptimistic(
+      () => {
+        user.isAdmin = isAdmin;
+        this.addToast(isAdmin ? `${user.name} is now an admin.` : `${user.name} is no longer an admin.`);
+      },
+      actions.setUserAdminAction(userId, isAdmin),
+      `Unable to update admin access for ${user.name}.`
+    );
+  }
+
+  // Managing a teammate's tasks from Team — never the caller's own (those are
+  // block-scheduled and live on Today instead). The server places a real
+  // schedule_block at the teammate's next available slot (see
+  // findNextAvailableDay in actions.ts), so it actually shows up on their
+  // Today/Calendar — the admin's client can't see that placement in advance
+  // (teammates' blocks aren't loaded here), so the toast doesn't guess a day.
+  adminCreateTask(userId: string, input: AdminTaskInput) {
+    const id = crypto.randomUUID();
+    const user = this.userById(userId);
+
+    this.runOptimistic(
+      () => {
+        const now = new Date().toISOString();
+        this.state.tasks.push({
+          id,
+          title: input.title,
+          project: input.isFreeSlot ? "" : (input.project ?? ""),
+          description: input.description,
+          estimatedHours: input.estimatedHours,
+          priority: input.isFreeSlot ? null : (input.priority ?? null),
+          isFreeSlot: input.isFreeSlot,
+          userId,
+          createdAt: now,
+          createdBy: this.state.currentUserId,
+          updatedAt: now,
+          updatedBy: this.state.currentUserId,
+        });
+        this.addToast(`"${input.title}" added${user ? ` for ${user.name}` : ""} — scheduled to their next available slot.`);
+      },
+      actions.adminCreateTaskAction({ taskId: id, userId, ...input }),
+      `Unable to add "${input.title}". Please try again.`
+    );
+  }
+
+  adminUpdateTask(taskId: string, input: AdminTaskInput) {
+    const task = this.taskById(taskId);
+    if (!task) return;
+    const newOwner = input.reassignTo && input.reassignTo !== task.userId ? this.userById(input.reassignTo) : undefined;
+
+    this.runOptimistic(
+      () => {
+        task.title = input.title;
+        task.project = input.isFreeSlot ? "" : (input.project ?? "");
+        task.description = input.description;
+        task.estimatedHours = input.estimatedHours;
+        task.priority = input.isFreeSlot ? null : (input.priority ?? null);
+        task.isFreeSlot = input.isFreeSlot;
+        if (newOwner) task.userId = newOwner.id;
+        task.updatedAt = new Date().toISOString();
+        task.updatedBy = this.state.currentUserId;
+        this.addToast(newOwner ? `"${input.title}" updated and reassigned to ${newOwner.name}.` : `"${input.title}" updated.`);
+      },
+      actions.adminUpdateTaskAction({ taskId, ...input }),
+      `Unable to update "${task.title}". Please try again.`
+    );
+  }
+
+  adminDeleteTask(taskId: string) {
+    const task = this.taskById(taskId);
+    if (!task) return;
+    const title = task.title;
+
+    this.runOptimistic(
+      () => {
+        const idx = this.state.tasks.findIndex((t) => t.id === taskId);
+        if (idx > -1) this.state.tasks.splice(idx, 1);
+        this.addToast(`"${title}" deleted.`);
+      },
+      actions.adminDeleteTaskAction(taskId),
+      `Unable to delete "${title}". Please try again.`
     );
   }
 
@@ -415,6 +543,24 @@ export class WorkTimeStore {
   }
   closeAddProjectModal() {
     this.ui.addProject = false;
+    this.notify();
+  }
+  openAdminTaskModal(state: AdminTaskModalState) {
+    this.ui.adminTask = state;
+    this.ui.adminTaskKey = ++this.uiSeq;
+    this.notify();
+  }
+  closeAdminTaskModal() {
+    this.ui.adminTask = null;
+    this.notify();
+  }
+  openEditTaskModal(taskId: string) {
+    this.ui.editTask = { taskId };
+    this.ui.editTaskKey = ++this.uiSeq;
+    this.notify();
+  }
+  closeEditTaskModal() {
+    this.ui.editTask = null;
     this.notify();
   }
 }

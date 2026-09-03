@@ -3,56 +3,49 @@
 import { useState } from "react";
 import { useWorkTime } from "@/lib/scheduling/context";
 import { Priority } from "@/lib/scheduling/types";
-import { AddTaskModalState } from "@/lib/scheduling/store";
+import { EditTaskModalState } from "@/lib/scheduling/store";
 
-// Remounted (via a `key` from the store) each time it's opened, so every field's
-// initial value below only needs to be computed once per open — no reset effect.
-export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
+// Remounted (via a `key` from the store) each time it's opened, so plain
+// useState defaults below are enough — no reset effect needed.
+export function EditTaskModal({ opts }: { opts: EditTaskModalState }) {
   const store = useWorkTime();
-  const initialDay = opts.day || store.viewedKey;
-  const hasPrefill = opts.title !== undefined;
+  const task = store.taskById(opts.taskId);
 
   const projectNames = store.state.projects.map((p) => p.name);
-  const preferredProject = hasPrefill ? "General" : "Sales";
-  const defaultProject = projectNames.includes(preferredProject) ? preferredProject : (projectNames[0] ?? "");
 
-  const [title, setTitle] = useState(hasPrefill ? opts.title! : "");
-  const [project, setProject] = useState(defaultProject);
-  const [priority, setPriority] = useState<Priority>("High");
-  const [description, setDescription] = useState("");
-  const [duration, setDuration] = useState(2);
-  const [isFreeSlot, setIsFreeSlot] = useState(false);
-
-  // Deadline, scheduled day, and timeline position are no longer user-editable
-  // in this modal — new tasks always land at the end of the user's current day.
-  const day = initialDay;
-  const position = "end";
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [project, setProject] = useState(task?.project || projectNames[0] || "");
+  const [priority, setPriority] = useState<Priority>(task?.priority ?? "High");
+  const [description, setDescription] = useState(task?.description ?? "");
+  const [duration, setDuration] = useState(task?.estimatedHours ?? 1);
+  const [isFreeSlot, setIsFreeSlot] = useState(task?.isFreeSlot ?? false);
 
   function close() {
-    store.closeAddModal();
+    store.closeEditTaskModal();
   }
 
   function submit() {
+    if (!task) return close();
     const trimmedTitle = title.trim() || "Untitled task";
     const dur = Math.max(0.5, duration || 1);
     close();
-    store.createTaskAndInsert({
+    store.updateTask(task.id, {
       title: trimmedTitle,
       project: isFreeSlot ? undefined : project,
       description: description.trim(),
       priority: isFreeSlot ? undefined : priority,
       isFreeSlot,
       duration: dur,
-      day,
-      position,
     });
   }
+
+  if (!task) return null;
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && close()}>
       <div className="modal">
         <div className="modal-head">
-          <h2>Add task</h2>
+          <h2>Edit task</h2>
           <button className="modal-close" onClick={close}>
             ✕
           </button>
@@ -114,7 +107,7 @@ export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
             Cancel
           </button>
           <button className="btn" onClick={submit} disabled={!isFreeSlot && !project}>
-            Add to schedule
+            Save changes
           </button>
         </div>
       </div>

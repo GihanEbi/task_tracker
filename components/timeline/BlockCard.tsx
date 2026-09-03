@@ -1,7 +1,7 @@
 "use client";
 
 import { ScheduleBlock, Task } from "@/lib/scheduling/types";
-import { fmtClock, fmtShort, keyToDate } from "@/lib/scheduling/dates";
+import { fmtClock } from "@/lib/scheduling/dates";
 
 export function BlockCard({
   block,
@@ -30,7 +30,7 @@ export function BlockCard({
 }) {
   return (
     <div
-      className={`block-card ${className}`.trim()}
+      className={`block-card ${task.isFreeSlot ? "is-free-slot" : ""} ${className}`.trim()}
       draggable
       style={{ top, height }}
       onClick={onOpen}
@@ -52,15 +52,16 @@ export function BlockCard({
       <div className="block-body">
         <div className="block-title">{label}</div>
         <div className="block-sub">
-          {task.project} · {block.duration}h
+          {task.isFreeSlot ? "Free time" : task.project} · {block.duration}h
         </div>
-        <div className="block-meta">
-          <span className="block-chip">
-            <span className={`prio-dot prio-${task.priority}`}></span>
-            {task.priority}
-          </span>
-          <span className="block-chip">due {fmtShort(keyToDate(task.deadline))}</span>
-        </div>
+        {task.priority && (
+          <div className="block-meta">
+            <span className="block-chip">
+              <span className={`prio-dot prio-${task.priority}`}></span>
+              {task.priority}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

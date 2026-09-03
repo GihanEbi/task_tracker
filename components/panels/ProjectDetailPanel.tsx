@@ -1,8 +1,6 @@
 "use client";
 
 import { useWorkTime } from "@/lib/scheduling/context";
-import { fmtShort, keyToDate } from "@/lib/scheduling/dates";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export function ProjectDetailPanel() {
@@ -33,7 +31,6 @@ export function ProjectDetailPanel() {
               ✕
             </button>
           </div>
-          <span className="badge b-neutral">{stats.pct}% complete</span>
         </div>
         <div className="detail-body">
           {p.description && (
@@ -53,12 +50,7 @@ export function ProjectDetailPanel() {
                 <div className="detail-stat-label">Estimated</div>
                 <div className="detail-stat-value">{stats.totalEst}h</div>
               </div>
-              <div>
-                <div className="detail-stat-label">Completed</div>
-                <div className="detail-stat-value">{stats.totalDone}h</div>
-              </div>
             </div>
-            <ProgressBar pct={stats.pct} color={p.color} style={{ marginTop: 10 }} />
           </div>
           <div className="detail-section">
             <h4>TEAM</h4>
@@ -80,7 +72,7 @@ export function ProjectDetailPanel() {
             {stats.list.length ? (
               stats.list
                 .slice()
-                .sort((a, b) => keyToDate(a.deadline).getTime() - keyToDate(b.deadline).getTime())
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                 .map((t) => {
                   const owner = store.userById(t.userId)!;
                   return (
@@ -89,10 +81,10 @@ export function ProjectDetailPanel() {
                       <div className="report-row-main">
                         <div className="report-row-title">{t.title}</div>
                         <div className="report-row-sub">
-                          {owner.name} · due {fmtShort(keyToDate(t.deadline))}
+                          {owner.name} · {t.estimatedHours}h
                         </div>
                       </div>
-                      <span className="badge b-neutral">{t.status}</span>
+                      <span className="badge b-neutral">{t.priority}</span>
                     </div>
                   );
                 })
