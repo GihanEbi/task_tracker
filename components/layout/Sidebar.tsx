@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignInButton, SignUpButton, Show, UserButton } from "@clerk/nextjs";
 import { useWorkTime } from "@/lib/scheduling/context";
 import { TODAY_KEY } from "@/lib/scheduling/dates";
 
@@ -136,6 +137,15 @@ export function Sidebar() {
         ))}
       </nav>
       <div className="sidebar-foot">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <Show when="signed-out">
+            <SignInButton />
+            <SignUpButton />
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+        </div>
         <div className="mini-gauge-label">
           <span>Today</span>
           <span>
