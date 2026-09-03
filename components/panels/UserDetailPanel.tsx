@@ -2,7 +2,6 @@
 
 import { useWorkTime } from "@/lib/scheduling/context";
 import { fmtWeekdayLong, keyToDate, TODAY_KEY, weekKeys } from "@/lib/scheduling/dates";
-import { CURRENT_USER_ID } from "@/lib/scheduling/seed-data";
 import { Badge } from "@/components/ui/Badge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
@@ -33,7 +32,7 @@ export function UserDetailPanel() {
               <div>
                 <div className="detail-title" style={{ fontSize: 17 }}>
                   {user.name}
-                  {userId === CURRENT_USER_ID ? " · You" : ""}
+                  {userId === store.state.currentUserId ? " · You" : ""}
                 </div>
                 <div className="user-card-role">
                   {user.role} · {user.department}
@@ -116,7 +115,7 @@ export function UserDetailPanel() {
         </div>
         <div className="detail-foot">
           <div className="empty-hint" style={{ padding: 0 }}>
-            {userId === CURRENT_USER_ID ? "This is your own schedule — edit it from Today." : `Read-only — ${user.name.split(" ")[0]} manages their own schedule.`}
+            {userId === store.state.currentUserId ? "This is your own schedule — edit it from Today." : `Read-only — ${user.name.split(" ")[0]} manages their own schedule.`}
           </div>
         </div>
       </div>

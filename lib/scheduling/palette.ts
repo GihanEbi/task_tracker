@@ -1,0 +1,1 @@
+export const USER_COLOR_PALETTE = ["#2D5A8C", "#7C4A9E", "#1F7A6C", "#8C5A2B", "#4A6B8C", "#3D7A5C"];

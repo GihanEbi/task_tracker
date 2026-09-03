@@ -1,6 +1,7 @@
 "use client";
 
 import { WorkTimeProvider, useWorkTime } from "@/lib/scheduling/context";
+import type { WorkTimeState } from "@/lib/scheduling/types";
 import { Sidebar } from "./Sidebar";
 import { ToastContainer } from "@/components/ui/ToastContainer";
 import { AddTaskModal } from "@/components/modals/AddTaskModal";
@@ -27,9 +28,9 @@ function Overlays() {
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, initialState }: { children: React.ReactNode; initialState: WorkTimeState }) {
   return (
-    <WorkTimeProvider>
+    <WorkTimeProvider initialState={initialState}>
       <div className="app">
         <Sidebar />
         <main className="content">{children}</main>

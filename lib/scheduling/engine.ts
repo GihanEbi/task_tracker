@@ -13,8 +13,6 @@ import {
 } from "./types";
 import { addDays, fmtShort, isWorkday, keyToDate, t2m, TODAY_DATE } from "./dates";
 
-const CURRENT_USER_ID = "u1";
-
 export function deriveWorkEnd(settings: WorkTimeState["settings"]) {
   const endM = t2m(settings.workStart) + settings.capacity * 60;
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -130,7 +128,7 @@ export function computeDeadlineStatus(state: WorkTimeState, task: Task): Deadlin
   const remaining = Math.max(0, task.estimatedHours - task.completedHours);
   if (remaining <= 0) return { level: "ok", label: "Complete", detail: "All estimated hours are logged for this task." };
   const deadlineDate = keyToDate(task.deadline);
-  const isMine = task.userId === CURRENT_USER_ID;
+  const isMine = task.userId === state.currentUserId;
   const cap = isMine ? state.settings.capacity : (userById(state, task.userId)?.capacity ?? 8);
   let cursor = new Date(Math.min(TODAY_DATE.getTime(), deadlineDate.getTime()));
   let available = 0;
@@ -160,7 +158,7 @@ function dkeyLocal(d: Date) {
 }
 
 export function summaryForUserDay(state: WorkTimeState, userId: string, dayKey: string): WorkloadSummary {
-  if (userId === CURRENT_USER_ID) {
+  if (userId === state.currentUserId) {
     const s = daySummary(state, dayKey);
     return { key: s.key, scheduled: s.scheduled, capacity: s.capacity, overloaded: s.overloaded };
   }
@@ -173,7 +171,7 @@ export function summaryForUserDay(state: WorkTimeState, userId: string, dayKey: 
 }
 
 export function scheduleItemsForUserDay(state: WorkTimeState, userId: string, dayKey: string): ScheduleItem[] {
-  if (userId === CURRENT_USER_ID) {
+  if (userId === state.currentUserId) {
     return daySummary(state, dayKey).list.map((b) => {
       const t = taskById(state, b.taskId)!;
       return { title: blockLabel(state, b), project: t.project, duration: b.duration, priority: t.priority, status: t.status, overflow: b.overflow, taskId: t.id };
@@ -200,5 +198,3 @@ export function projectStats(state: WorkTimeState, projectName: string): Project
 export function projectByName(state: WorkTimeState, name: string): Project | undefined {
   return state.projects.find((p) => p.name === name);
 }
-
-export const CURRENT_USER = CURRENT_USER_ID;

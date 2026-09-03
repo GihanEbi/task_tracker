@@ -69,6 +69,7 @@ export interface WorkTimeState {
   tasks: Task[];
   blocks: ScheduleBlock[];
   history: HistoryEntry[];
+  currentUserId: string;
 }
 
 export interface DaySummary {

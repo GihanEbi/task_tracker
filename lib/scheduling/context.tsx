@@ -2,11 +2,12 @@
 
 import { createContext, useContext, useState, useSyncExternalStore } from "react";
 import { WorkTimeStore } from "./store";
+import type { WorkTimeState } from "./types";
 
 const StoreContext = createContext<WorkTimeStore | null>(null);
 
-export function WorkTimeProvider({ children }: { children: React.ReactNode }) {
-  const [store] = useState(() => new WorkTimeStore());
+export function WorkTimeProvider({ initialState, children }: { initialState: WorkTimeState; children: React.ReactNode }) {
+  const [store] = useState(() => new WorkTimeStore(initialState));
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>;
 }
 

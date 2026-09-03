@@ -511,3 +511,24 @@ textarea{ width:100%; padding:8px 10px; border:1px solid var(--line-strong); bor
   .day-grid{ grid-template-columns:repeat(2,1fr); }
   .settings-grid{ grid-template-columns:1fr; }
 }
+
+/* ---------- landing page ---------- */
+.landing{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+.landing-card{
+  position:relative;
+  max-width:460px;
+  width:100%;
+  padding:36px 32px;
+  text-align:center;
+}
+.landing-brand{ justify-content:center; border:none; padding:0; margin-bottom:22px; }
+.landing-title{ font-size:24px; font-weight:600; letter-spacing:-0.015em; margin:0 0 12px; }
+.landing-sub{ font-size:14px; line-height:1.55; color:var(--ink-soft); margin:0 0 26px; }
+.landing-actions{ display:flex; gap:10px; justify-content:center; }
+.landing-actions .btn{ flex:1; justify-content:center; }
