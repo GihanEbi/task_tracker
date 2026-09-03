@@ -29,10 +29,11 @@ export interface Project {
 export interface Task {
   id: string;
   title: string;
-  project: string; // project name
+  project: string; // project name — "" for a free time slot
   description: string;
   estimatedHours: number;
-  priority: Priority;
+  priority: Priority | null; // null for a free time slot
+  isFreeSlot: boolean;
   userId: string;
   createdAt: string; // ISO timestamp
   createdBy: string; // user id
@@ -92,7 +93,8 @@ export interface ScheduleItem {
   title: string;
   project: string;
   duration: number;
-  priority: Priority;
+  priority: Priority | null;
+  isFreeSlot: boolean;
   overflow: boolean;
   taskId: string;
 }

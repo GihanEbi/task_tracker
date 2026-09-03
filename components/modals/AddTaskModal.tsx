@@ -21,6 +21,7 @@ export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
   const [priority, setPriority] = useState<Priority>("High");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState(2);
+  const [isFreeSlot, setIsFreeSlot] = useState(false);
 
   // Deadline, scheduled day, and timeline position are no longer user-editable
   // in this modal — new tasks always land at the end of the user's current day.
@@ -37,9 +38,10 @@ export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
     close();
     store.createTaskAndInsert({
       title: trimmedTitle,
-      project,
+      project: isFreeSlot ? undefined : project,
       description: description.trim(),
-      priority,
+      priority: isFreeSlot ? undefined : priority,
+      isFreeSlot,
       duration: dur,
       day,
       position,
@@ -58,32 +60,46 @@ export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
         <div className="modal-body">
           <div className="field">
             <label>Task title</label>
-            <input type="text" value={title} placeholder="e.g. Client Proposal" onChange={(e) => setTitle(e.target.value)} />
+            <input
+              type="text"
+              value={title}
+              placeholder={isFreeSlot ? "e.g. Lunch Break" : "e.g. Client Proposal"}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label>Project</label>
-              {projectNames.length === 0 ? (
-                <p className="field-hint">No projects yet — ask an admin to create one before scheduling tasks.</p>
-              ) : (
-                <select value={project} onChange={(e) => setProject(e.target.value)}>
-                  {store.state.projects.map((p) => (
-                    <option key={p.id} value={p.name}>
-                      {p.name}
-                    </option>
-                  ))}
+          <label className="toggle-row">
+            <span className="toggle-switch">
+              <input type="checkbox" checked={isFreeSlot} onChange={(e) => setIsFreeSlot(e.target.checked)} />
+              <span className="toggle-track"></span>
+            </span>
+            Free time slot
+          </label>
+          {!isFreeSlot && (
+            <div className="field-row">
+              <div className="field">
+                <label>Project</label>
+                {projectNames.length === 0 ? (
+                  <p className="field-hint">No projects yet — ask an admin to create one before scheduling tasks.</p>
+                ) : (
+                  <select value={project} onChange={(e) => setProject(e.target.value)}>
+                    {store.state.projects.map((p) => (
+                      <option key={p.id} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div className="field">
+                <label>Priority</label>
+                <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
                 </select>
-              )}
+              </div>
             </div>
-            <div className="field">
-              <label>Priority</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
-              </select>
-            </div>
-          </div>
+          )}
           <div className="field">
             <label>Description (optional)</label>
             <textarea value={description} placeholder="What does this task involve?" onChange={(e) => setDescription(e.target.value)} />
@@ -97,7 +113,7 @@ export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
           <button className="btn secondary" onClick={close}>
             Cancel
           </button>
-          <button className="btn" onClick={submit} disabled={!project}>
+          <button className="btn" onClick={submit} disabled={!isFreeSlot && !project}>
             Add to schedule
           </button>
         </div>

@@ -32,7 +32,8 @@ interface TaskRow {
   title: string;
   description: string;
   estimated_hours: number | string;
-  priority: string;
+  priority: string | null;
+  is_free_slot: boolean;
   user_id: string;
   created_at: string;
   created_by: string;
@@ -77,7 +78,8 @@ function mapTaskRow(r: TaskRow): Task {
     project: r.projects?.name ?? "",
     description: r.description,
     estimatedHours: Number(r.estimated_hours),
-    priority: r.priority as Priority,
+    priority: (r.priority as Priority | null) ?? null,
+    isFreeSlot: r.is_free_slot,
     userId: r.user_id,
     createdAt: r.created_at,
     createdBy: r.created_by,
@@ -245,9 +247,10 @@ export interface CreateTaskActionInput {
   taskId: string;
   blockId: string;
   title: string;
-  project: string;
+  project?: string;
   description: string;
-  priority: Priority;
+  priority?: Priority;
+  isFreeSlot: boolean;
   duration: number;
   day: string;
   position: string; // block id, or "end"
@@ -257,16 +260,21 @@ export async function createTaskAction(input: CreateTaskActionInput) {
   const appUser = await getOrCreateAppUser();
   const supabase = createSupabaseAdminClient();
 
-  const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
-  if (!project) throw new Error(`Unknown project "${input.project}".`);
+  let projectId: string | null = null;
+  if (!input.isFreeSlot) {
+    const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
+    if (!project) throw new Error(`Unknown project "${input.project}".`);
+    projectId = project.id;
+  }
 
   const { error: taskError } = await supabase.from("tasks").insert({
     id: input.taskId,
     title: input.title,
-    project_id: project.id,
+    project_id: projectId,
     description: input.description,
     estimated_hours: input.duration,
-    priority: input.priority,
+    priority: input.isFreeSlot ? null : input.priority,
+    is_free_slot: input.isFreeSlot,
     user_id: appUser.id,
     created_by: appUser.id,
     updated_by: appUser.id,
@@ -339,9 +347,10 @@ export async function commitOrderAction(day: string, orderedBlockIds: string[]) 
 export interface UpdateTaskActionInput {
   taskId: string;
   title: string;
-  project: string;
+  project?: string;
   description: string;
-  priority: Priority;
+  priority?: Priority;
+  isFreeSlot: boolean;
   duration: number;
 }
 
@@ -350,17 +359,22 @@ export async function updateTaskAction(input: UpdateTaskActionInput) {
   const supabase = createSupabaseAdminClient();
   await getOwnedTask(supabase, input.taskId, appUser.id);
 
-  const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
-  if (!project) throw new Error(`Unknown project "${input.project}".`);
+  let projectId: string | null = null;
+  if (!input.isFreeSlot) {
+    const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
+    if (!project) throw new Error(`Unknown project "${input.project}".`);
+    projectId = project.id;
+  }
 
   const { error: taskError } = await supabase
     .from("tasks")
     .update({
       title: input.title,
-      project_id: project.id,
+      project_id: projectId,
       description: input.description,
       estimated_hours: input.duration,
-      priority: input.priority,
+      priority: input.isFreeSlot ? null : input.priority,
+      is_free_slot: input.isFreeSlot,
       updated_by: appUser.id,
       updated_at: new Date().toISOString(),
     })
@@ -454,9 +468,10 @@ export async function setUserAdminAction(userId: string, isAdmin: boolean) {
 
 export interface AdminTaskActionInput {
   title: string;
-  project: string;
+  project?: string;
   description: string;
-  priority: Priority;
+  priority?: Priority;
+  isFreeSlot: boolean;
   estimatedHours: number;
 }
 
@@ -465,16 +480,21 @@ export async function adminCreateTaskAction(input: AdminTaskActionInput & { task
   if (input.userId === appUser.id) throw new Error("Manage your own tasks from Today.");
   const supabase = createSupabaseAdminClient();
 
-  const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
-  if (!project) throw new Error(`Unknown project "${input.project}".`);
+  let projectId: string | null = null;
+  if (!input.isFreeSlot) {
+    const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
+    if (!project) throw new Error(`Unknown project "${input.project}".`);
+    projectId = project.id;
+  }
 
   const { error: taskError } = await supabase.from("tasks").insert({
     id: input.taskId,
     title: input.title,
-    project_id: project.id,
+    project_id: projectId,
     description: input.description,
     estimated_hours: input.estimatedHours,
-    priority: input.priority,
+    priority: input.isFreeSlot ? null : input.priority,
+    is_free_slot: input.isFreeSlot,
     user_id: input.userId,
     created_by: appUser.id,
     updated_by: appUser.id,
@@ -509,17 +529,22 @@ export async function adminUpdateTaskAction(input: AdminTaskActionInput & { task
   const supabase = createSupabaseAdminClient();
   const existing = await getAdminManagedTask(supabase, input.taskId, appUser.id);
 
-  const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
-  if (!project) throw new Error(`Unknown project "${input.project}".`);
+  let projectId: string | null = null;
+  if (!input.isFreeSlot) {
+    const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
+    if (!project) throw new Error(`Unknown project "${input.project}".`);
+    projectId = project.id;
+  }
 
   const { error: taskError } = await supabase
     .from("tasks")
     .update({
       title: input.title,
-      project_id: project.id,
+      project_id: projectId,
       description: input.description,
       estimated_hours: input.estimatedHours,
-      priority: input.priority,
+      priority: input.isFreeSlot ? null : input.priority,
+      is_free_slot: input.isFreeSlot,
       ...(input.reassignTo ? { user_id: input.reassignTo } : {}),
       updated_by: appUser.id,
       updated_at: new Date().toISOString(),

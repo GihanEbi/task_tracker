@@ -95,10 +95,10 @@ export function UserDetailPanel() {
                       <div className="report-row-main">
                         <div className="report-row-title">{it.title}</div>
                         <div className="report-row-sub">
-                          {it.project} · {it.duration}h{it.overflow ? " · pending move" : ""}
+                          {it.isFreeSlot ? "Free time" : it.project} · {it.duration}h{it.overflow ? " · pending move" : ""}
                         </div>
                       </div>
-                      <span className="badge b-neutral">{it.priority}</span>
+                      {it.priority && <span className="badge b-neutral">{it.priority}</span>}
                     </div>
                   ))
                 ) : (
@@ -150,10 +150,10 @@ export function UserDetailPanel() {
                           {derivedTodayIds.has(t.id) ? " · Today" : ""}
                         </div>
                         <div className="report-row-sub">
-                          {t.project} · {t.estimatedHours}h
+                          {t.isFreeSlot ? "Free time" : t.project} · {t.estimatedHours}h
                         </div>
                       </div>
-                      <span className="badge b-neutral">{t.priority}</span>
+                      {t.priority && <span className="badge b-neutral">{t.priority}</span>}
                       {viewerIsAdmin && (
                         <div style={{ display: "flex", gap: 4 }}>
                           <button className="btn ghost" style={{ padding: "4px 8px", fontSize: 11.5 }} onClick={() => store.openAdminTaskModal({ userId, taskId: t.id })}>

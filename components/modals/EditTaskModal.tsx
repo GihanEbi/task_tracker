@@ -14,10 +14,11 @@ export function EditTaskModal({ opts }: { opts: EditTaskModalState }) {
   const projectNames = store.state.projects.map((p) => p.name);
 
   const [title, setTitle] = useState(task?.title ?? "");
-  const [project, setProject] = useState(task?.project ?? projectNames[0] ?? "");
+  const [project, setProject] = useState(task?.project || projectNames[0] || "");
   const [priority, setPriority] = useState<Priority>(task?.priority ?? "High");
   const [description, setDescription] = useState(task?.description ?? "");
   const [duration, setDuration] = useState(task?.estimatedHours ?? 1);
+  const [isFreeSlot, setIsFreeSlot] = useState(task?.isFreeSlot ?? false);
 
   function close() {
     store.closeEditTaskModal();
@@ -28,7 +29,14 @@ export function EditTaskModal({ opts }: { opts: EditTaskModalState }) {
     const trimmedTitle = title.trim() || "Untitled task";
     const dur = Math.max(0.5, duration || 1);
     close();
-    store.updateTask(task.id, { title: trimmedTitle, project, description: description.trim(), priority, duration: dur });
+    store.updateTask(task.id, {
+      title: trimmedTitle,
+      project: isFreeSlot ? undefined : project,
+      description: description.trim(),
+      priority: isFreeSlot ? undefined : priority,
+      isFreeSlot,
+      duration: dur,
+    });
   }
 
   if (!task) return null;
@@ -45,32 +53,46 @@ export function EditTaskModal({ opts }: { opts: EditTaskModalState }) {
         <div className="modal-body">
           <div className="field">
             <label>Task title</label>
-            <input type="text" value={title} placeholder="e.g. Client Proposal" onChange={(e) => setTitle(e.target.value)} />
+            <input
+              type="text"
+              value={title}
+              placeholder={isFreeSlot ? "e.g. Lunch Break" : "e.g. Client Proposal"}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
-          <div className="field-row">
-            <div className="field">
-              <label>Project</label>
-              {projectNames.length === 0 ? (
-                <p className="field-hint">No projects yet — ask an admin to create one before scheduling tasks.</p>
-              ) : (
-                <select value={project} onChange={(e) => setProject(e.target.value)}>
-                  {store.state.projects.map((p) => (
-                    <option key={p.id} value={p.name}>
-                      {p.name}
-                    </option>
-                  ))}
+          <label className="toggle-row">
+            <span className="toggle-switch">
+              <input type="checkbox" checked={isFreeSlot} onChange={(e) => setIsFreeSlot(e.target.checked)} />
+              <span className="toggle-track"></span>
+            </span>
+            Free time slot
+          </label>
+          {!isFreeSlot && (
+            <div className="field-row">
+              <div className="field">
+                <label>Project</label>
+                {projectNames.length === 0 ? (
+                  <p className="field-hint">No projects yet — ask an admin to create one before scheduling tasks.</p>
+                ) : (
+                  <select value={project} onChange={(e) => setProject(e.target.value)}>
+                    {store.state.projects.map((p) => (
+                      <option key={p.id} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div className="field">
+                <label>Priority</label>
+                <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
                 </select>
-              )}
+              </div>
             </div>
-            <div className="field">
-              <label>Priority</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
-              </select>
-            </div>
-          </div>
+          )}
           <div className="field">
             <label>Description (optional)</label>
             <textarea value={description} placeholder="What does this task involve?" onChange={(e) => setDescription(e.target.value)} />
@@ -84,7 +106,7 @@ export function EditTaskModal({ opts }: { opts: EditTaskModalState }) {
           <button className="btn secondary" onClick={close}>
             Cancel
           </button>
-          <button className="btn" onClick={submit} disabled={!project}>
+          <button className="btn" onClick={submit} disabled={!isFreeSlot && !project}>
             Save changes
           </button>
         </div>

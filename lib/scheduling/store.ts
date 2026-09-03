@@ -28,9 +28,10 @@ export interface AdminTaskModalState {
 
 export interface AdminTaskInput {
   title: string;
-  project: string;
+  project?: string;
   description: string;
-  priority: Priority;
+  priority?: Priority;
+  isFreeSlot: boolean;
   estimatedHours: number;
   reassignTo?: string; // edit mode only — new owner
 }
@@ -59,9 +60,10 @@ export interface UIState {
 
 export interface CreateTaskInput {
   title: string;
-  project: string;
+  project?: string;
   description: string;
-  priority: Priority;
+  priority?: Priority;
+  isFreeSlot: boolean;
   duration: number;
   day: string;
   position: string; // block id, or "end"
@@ -208,10 +210,11 @@ export class WorkTimeStore {
         this.state.tasks.push({
           id: taskId,
           title: input.title,
-          project: input.project,
+          project: input.isFreeSlot ? "" : (input.project ?? ""),
           description: input.description,
           estimatedHours: input.duration,
-          priority: input.priority,
+          priority: input.isFreeSlot ? null : (input.priority ?? null),
+          isFreeSlot: input.isFreeSlot,
           userId: this.state.currentUserId,
           createdAt: now,
           createdBy: this.state.currentUserId,
@@ -280,16 +283,17 @@ export class WorkTimeStore {
     );
   }
 
-  updateTask(taskId: string, input: { title: string; project: string; description: string; priority: Priority; duration: number }) {
+  updateTask(taskId: string, input: { title: string; project?: string; description: string; priority?: Priority; isFreeSlot: boolean; duration: number }) {
     const task = this.taskById(taskId);
     if (!task) return;
 
     this.runOptimistic(
       () => {
         task.title = input.title;
-        task.project = input.project;
+        task.project = input.isFreeSlot ? "" : (input.project ?? "");
         task.description = input.description;
-        task.priority = input.priority;
+        task.priority = input.isFreeSlot ? null : (input.priority ?? null);
+        task.isFreeSlot = input.isFreeSlot;
         task.estimatedHours = input.duration;
         task.updatedAt = new Date().toISOString();
         task.updatedBy = this.state.currentUserId;
@@ -404,10 +408,11 @@ export class WorkTimeStore {
         this.state.tasks.push({
           id,
           title: input.title,
-          project: input.project,
+          project: input.isFreeSlot ? "" : (input.project ?? ""),
           description: input.description,
           estimatedHours: input.estimatedHours,
-          priority: input.priority,
+          priority: input.isFreeSlot ? null : (input.priority ?? null),
+          isFreeSlot: input.isFreeSlot,
           userId,
           createdAt: now,
           createdBy: this.state.currentUserId,
@@ -429,10 +434,11 @@ export class WorkTimeStore {
     this.runOptimistic(
       () => {
         task.title = input.title;
-        task.project = input.project;
+        task.project = input.isFreeSlot ? "" : (input.project ?? "");
         task.description = input.description;
         task.estimatedHours = input.estimatedHours;
-        task.priority = input.priority;
+        task.priority = input.isFreeSlot ? null : (input.priority ?? null);
+        task.isFreeSlot = input.isFreeSlot;
         if (newOwner) task.userId = newOwner.id;
         task.updatedAt = new Date().toISOString();
         task.updatedBy = this.state.currentUserId;

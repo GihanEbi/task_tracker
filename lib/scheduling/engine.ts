@@ -133,7 +133,7 @@ export function summaryForUserDay(state: WorkTimeState, dayKey: string): Workloa
 export function scheduleItemsForUserDay(state: WorkTimeState, dayKey: string): ScheduleItem[] {
   return daySummary(state, dayKey).list.map((b) => {
     const t = taskById(state, b.taskId)!;
-    return { title: blockLabel(state, b), project: t.project, duration: b.duration, priority: t.priority, overflow: b.overflow, taskId: t.id };
+    return { title: blockLabel(state, b), project: t.project, duration: b.duration, priority: t.priority, isFreeSlot: t.isFreeSlot, overflow: b.overflow, taskId: t.id };
   });
 }
 

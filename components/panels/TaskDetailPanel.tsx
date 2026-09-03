@@ -28,7 +28,7 @@ export function TaskDetailPanel() {
         <div className="detail-head">
           <div className="detail-head-top">
             <div>
-              <div className="detail-project">{task.project}</div>
+              <div className="detail-project">{task.isFreeSlot ? "Free time" : task.project}</div>
               <div className="detail-title">{task.title}</div>
             </div>
             <button className="modal-close" onClick={close}>
@@ -61,10 +61,12 @@ export function TaskDetailPanel() {
               <span className="detail-row-label">Estimated</span>
               <span>{task.estimatedHours}h</span>
             </div>
-            <div className="detail-row">
-              <span className="detail-row-label">Priority</span>
-              <span>{task.priority}</span>
-            </div>
+            {task.priority && (
+              <div className="detail-row">
+                <span className="detail-row-label">Priority</span>
+                <span>{task.priority}</span>
+              </div>
+            )}
           </div>
           <div className="detail-section">
             <h4>SCHEDULE</h4>

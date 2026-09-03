@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWorkTime } from "@/lib/scheduling/context";
-import { fmtClock, fmtLong, fmtShort, isWorkday, keyToDate, nextWorkday, relDay, t2m } from "@/lib/scheduling/dates";
+import { fmtClock, fmtLong, fmtShort, isWorkday, keyToDate, nextWorkday, t2m } from "@/lib/scheduling/dates";
 import { Topbar } from "@/components/layout/Topbar";
 import { BlockCard } from "./BlockCard";
 
@@ -87,7 +87,7 @@ export function TodayView() {
         <span className="corner-tick br"></span>
         <div className="gauge-top">
           <div className="gauge-greeting" suppressHydrationWarning>
-            {greeting} — here&apos;s how {relDay(viewedKey).toLowerCase() === "today" ? "today" : `${fmtShort(d)}'s`} plan looks.
+            {greeting} — here&apos;s how {fmtShort(d)}&apos;s plan looks.
           </div>
           <div className={`gauge-status status-${status === "ok" ? "ok" : status === "tight" ? "tight" : "risk"}`}>
             <span className="dot"></span>

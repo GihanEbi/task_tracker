@@ -44,7 +44,7 @@ export function QuickInsertPopover({ qi }: { qi: QuickInsertState }) {
       return;
     }
     const dur = Math.max(0.5, duration || 1);
-    store.createTaskAndInsert({ title: trimmed, project: projectName, description: "", priority, duration: dur, day: qi.day, position: qi.position });
+    store.createTaskAndInsert({ title: trimmed, project: projectName, description: "", priority, isFreeSlot: false, duration: dur, day: qi.day, position: qi.position });
     store.closeQuickInsert();
   }
 
