@@ -1,0 +1,85 @@
+-- Demo seed data, generated from the original lib/scheduling/seed-data.ts
+
+insert into users (id, clerk_user_id, name, role, department, email, capacity, color, is_admin) values
+  ('526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null, 'Alex Chen', 'Software Engineer', 'Engineering', 'alex@worktime.io', 8, '#2D5A8C', false),
+  ('5e537dfb-11bc-495b-a53d-e6d2e4b49635', null, 'Priya Nair', 'Product Designer', 'Design', 'priya@worktime.io', 7, '#7C4A9E', false),
+  ('63c82a00-4dba-457c-b50a-9af37dcfeabf', null, 'Marcus Webb', 'Sales Lead', 'Sales', 'marcus@worktime.io', 8, '#1F7A6C', false),
+  ('10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', null, 'Jordan Lee', 'QA Engineer', 'Engineering', 'jordan@worktime.io', 8, '#8C5A2B', false);
+
+insert into user_settings (user_id, work_start, capacity, default_slot) values
+  ('526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', '09:00', 8, 60),
+  ('5e537dfb-11bc-495b-a53d-e6d2e4b49635', '09:00', 7, 60),
+  ('63c82a00-4dba-457c-b50a-9af37dcfeabf', '09:00', 8, 60),
+  ('10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '09:00', 8, 60);
+
+insert into projects (id, name, color, description) values
+  ('b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'CRM', '#2D5A8C', 'Customer management module — engineering, design and QA.'),
+  ('05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', 'Sales', '#6B4FA0', 'Pipeline, proposals and client outreach.'),
+  ('e7c0a3e3-33b8-417c-ad5f-6df435bf43db', 'Meridian', '#1F7A6C', 'Meridian account relationship and renewal.'),
+  ('324a3476-9933-4f51-811f-89c750e4178a', 'Personal', '#8B98A5', 'Breaks and personal time.'),
+  ('4cda7689-7e97-4524-bba2-525098dfdebc', 'General', '#B9C3CA', 'Uncategorized or one-off work.');
+
+insert into tasks (id, title, project_id, description, estimated_hours, completed_hours, deadline, priority, status, user_id, assigned_day) values
+  ('a55b2771-962b-40c3-afc9-5ce918846ffa', 'Client Sync', 'e7c0a3e3-33b8-417c-ad5f-6df435bf43db', 'Weekly account sync with the Meridian stakeholders.', 3, 3, '2026-08-31', 'Medium', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('7edb1417-40d6-43cb-a894-a973251c6c27', 'Lunch Break', '324a3476-9933-4f51-811f-89c750e4178a', 'Time away from the desk — scheduled like any other task.', 1, 1, '2026-08-31', 'Low', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('0cdc552c-d211-424b-8e9b-a97f434ee98d', 'Design Review', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Review UI proposals for the customer module with the design team.', 3, 3, '2026-08-31', 'Low', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('9fff9ae6-07a7-43d7-ba39-573679ef96ff', 'Sprint Planning', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Plan the two-week sprint scope with the team.', 3, 3, '2026-09-01', 'Medium', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('67ac08e6-4f9e-4c07-82f7-c44b09031be6', 'Lunch Break', '324a3476-9933-4f51-811f-89c750e4178a', 'Time away from the desk — scheduled like any other task.', 1, 1, '2026-09-01', 'Low', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('bc933ae9-efd8-435e-9e67-cabf3dbcbe06', 'Feature Build — Contacts', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Build the contacts list view for the customer module.', 4, 4, '2026-09-01', 'High', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('2d06b7bf-8f05-42f9-a81f-fc0fd53fecc6', 'Feature Build — Payments', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Wire up the payments panel inside the customer module.', 4, 4, '2026-09-02', 'High', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('4eb9386f-b4cb-4b4a-aaea-5d6232ab820d', 'Lunch Break', '324a3476-9933-4f51-811f-89c750e4178a', 'Time away from the desk — scheduled like any other task.', 1, 1, '2026-09-02', 'Low', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('5c853979-ffa2-406f-8f24-963fda59e571', 'Code Review', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Review open pull requests from the sprint.', 4, 4, '2026-09-02', 'Medium', 'Completed', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('93ada3f9-ddec-407c-b609-35f3f4134cfd', 'CRM Development', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Complete the customer management module: contacts, integrations and QA.', 8, 4, '2026-09-04', 'High', 'In Progress', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('6adb0a51-1066-4f9f-9d77-65dc577229ae', 'Lunch Break', '324a3476-9933-4f51-811f-89c750e4178a', 'Time away from the desk — scheduled like any other task.', 1, 0, '2026-09-03', 'Low', 'Planned', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('14df5500-5830-4eea-a53d-a3e9cfe86689', 'CRM Documentation', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Write end-user and API documentation for the customer module.', 1, 0, '2026-09-05', 'Medium', 'Planned', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('06d6301a-e3bb-40b1-b3cb-2b4f9c656e72', 'Sprint Retro', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Retrospective on the last two-week sprint.', 2, 0, '2026-09-04', 'Low', 'Planned', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('6e7c7e2d-f047-4620-bc0a-32731a28b649', 'Lunch Break', '324a3476-9933-4f51-811f-89c750e4178a', 'Time away from the desk — scheduled like any other task.', 1, 0, '2026-09-04', 'Low', 'Planned', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('bd8b3b1f-ccab-424b-a539-e3af5e396d2b', 'Planning Buffer', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', 'Reserved time for whatever the sprint kickoff needs.', 3, 0, '2026-09-04', 'Low', 'Planned', '526c0e6b-1b3c-4e25-ba2b-a55c8f2d901e', null),
+  ('51177f4f-aa1b-4782-99f9-412bda28a3f5', 'Wireframe Review', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 3, 3, '2026-08-31', 'Medium', 'Completed', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-08-31'),
+  ('fac434a1-822c-47cc-9ff8-30ddd528fffd', 'User Interviews', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 3, 3, '2026-08-31', 'Medium', 'Completed', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-08-31'),
+  ('40799d56-9814-4f8b-b570-b9f0c8646c0f', 'Design System Updates', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 4, 4, '2026-09-01', 'Medium', 'Completed', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-09-01'),
+  ('f43a93e9-15c0-4f41-b864-cb2077f5b897', 'Stakeholder Review', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 3, 3, '2026-09-01', 'Medium', 'Completed', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-09-01'),
+  ('0b2037bf-0cc0-41aa-a1e8-7b0e1655e5f1', 'Prototype Testing', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 5, 5, '2026-09-02', 'High', 'Completed', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-09-02'),
+  ('76175107-fde9-44de-853c-0ab66cf2da6f', 'Design Critique', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 3, 3, '2026-09-02', 'Low', 'Completed', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-09-02'),
+  ('e332a4eb-249d-405b-8812-7e8822fc5c14', 'Customer Module UI Polish', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 4, 0, '2026-09-04', 'High', 'In Progress', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-09-03'),
+  ('d8755f14-153d-45ae-9b24-c1e640c30d55', 'Handoff Prep', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 2, 0, '2026-09-04', 'Medium', 'Planned', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-09-03'),
+  ('92d53b08-a1fd-419e-9e91-c257978fbdf3', 'Sprint Demo Prep', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 3, 0, '2026-09-04', 'Low', 'Planned', '5e537dfb-11bc-495b-a53d-e6d2e4b49635', '2026-09-04'),
+  ('8838d262-8d32-45b1-8019-aeee584d6254', 'Pipeline Review', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 2, 2, '2026-08-31', 'Medium', 'Completed', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-08-31'),
+  ('91e8d0d6-8a80-4971-8d8c-0d99f541a3fe', 'Client Calls', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 4, 4, '2026-08-31', 'Medium', 'Completed', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-08-31'),
+  ('2cab80b0-3553-4fa0-89f8-e7158a1278cb', 'Proposal Writing', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 3, 3, '2026-09-01', 'High', 'Completed', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-01'),
+  ('8c6e6eb2-d206-4107-b171-48ae8e4f440c', 'Client Calls', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 5, 5, '2026-09-01', 'Medium', 'Completed', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-01'),
+  ('f53d44fb-4627-4e04-819f-0f6c228c0021', 'Contract Negotiation', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 6, 6, '2026-09-02', 'High', 'Completed', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-02'),
+  ('bc5d05ae-1848-468e-8a8b-66bfa29f6a39', 'Team Sync', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 2, 2, '2026-09-02', 'Low', 'Completed', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-02'),
+  ('81037410-996d-4bc0-9e28-ab8b25eb48a3', 'Meridian Renewal Call', 'e7c0a3e3-33b8-417c-ad5f-6df435bf43db', '', 3, 0, '2026-09-03', 'High', 'In Progress', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-03'),
+  ('17ab3fef-b172-4eab-ae12-376cde2788ca', 'Proposal Writing — Atlas', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 4, 0, '2026-09-04', 'Medium', 'Planned', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-03'),
+  ('f09d0206-31bf-418b-8561-f4618f355486', 'Weekly Forecast', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 2, 0, '2026-09-04', 'Low', 'Planned', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-04'),
+  ('42e619f6-6074-4df6-8baf-0d3db421475e', 'Pipeline Cleanup', '05c6a9bb-8a7f-4838-8aa0-87bf7989a78f', '', 3, 0, '2026-09-04', 'Low', 'Planned', '63c82a00-4dba-457c-b50a-9af37dcfeabf', '2026-09-04'),
+  ('057afa70-b4e1-4ccc-b2e8-da66f0aba4aa', 'Regression Suite', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 5, 5, '2026-08-31', 'High', 'Completed', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-08-31'),
+  ('05a6ec12-ac0d-4428-82db-f19226f561ce', 'Bug Triage', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 3, 3, '2026-08-31', 'Medium', 'Completed', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-08-31'),
+  ('ba8b9920-0d26-4cb9-82a2-3bcf4a658112', 'Regression Suite', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 5, 5, '2026-09-01', 'High', 'Completed', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-01'),
+  ('da9ef49e-5f61-4e0f-80de-e56958886c0b', 'Automation Scripts', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 4, 4, '2026-09-01', 'Medium', 'Completed', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-01'),
+  ('d3fc086e-aa2a-4992-acde-eb0dbc7a08e3', 'Release Testing', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 6, 6, '2026-09-02', 'High', 'Completed', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-02'),
+  ('289bb9bf-fe44-4ba1-88ba-f4509f142395', 'Bug Triage', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 4, 4, '2026-09-02', 'Medium', 'Completed', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-02'),
+  ('2c776aa6-ecbc-4c2f-9a37-bb215f14a345', 'CRM Module QA', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 5, 0, '2026-09-04', 'High', 'In Progress', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-03'),
+  ('07107126-66f0-4917-8974-904bc242e2fa', 'Automation Scripts', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 4, 0, '2026-09-04', 'Medium', 'Planned', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-03'),
+  ('050a8a1c-832e-4c88-889c-da991777baba', 'Release Sign-off', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 3, 0, '2026-09-04', 'High', 'Planned', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-04'),
+  ('c4fba2d0-5298-48e9-b4c1-1fa48d2618de', 'Sprint Retro', 'b6e3c271-0370-4f4f-a0a2-62c953e055a8', '', 2, 0, '2026-09-04', 'Low', 'Planned', '10ddeeac-4289-40dc-89ed-cf2a40b5ba8e', '2026-09-04');
+
+insert into schedule_blocks (id, task_id, day, "order", duration, overflow, start_minutes, end_minutes, label) values
+  ('ddc36cdc-e1ef-4743-b680-7040bee42d0d', 'a55b2771-962b-40c3-afc9-5ce918846ffa', '2026-08-31', 0, 3, false, null, null, null),
+  ('6cb469ec-960d-43bf-9980-a3584e6af108', '7edb1417-40d6-43cb-a894-a973251c6c27', '2026-08-31', 1, 1, false, null, null, null),
+  ('1cfef2cd-a661-4f84-abf9-9226353c79f6', '0cdc552c-d211-424b-8e9b-a97f434ee98d', '2026-08-31', 2, 3, false, null, null, null),
+  ('94d87146-7df9-4b3c-9b6e-d14467149b47', '9fff9ae6-07a7-43d7-ba39-573679ef96ff', '2026-09-01', 0, 3, false, null, null, null),
+  ('20c7c265-58ee-47b0-8b10-ba9b11c24782', '67ac08e6-4f9e-4c07-82f7-c44b09031be6', '2026-09-01', 1, 1, false, null, null, null),
+  ('c232f067-471e-48ad-af25-aeaf828c4d1f', 'bc933ae9-efd8-435e-9e67-cabf3dbcbe06', '2026-09-01', 2, 4, false, null, null, null),
+  ('aab9e067-93c9-4468-b185-8646d1ab4d81', '2d06b7bf-8f05-42f9-a81f-fc0fd53fecc6', '2026-09-02', 0, 4, false, null, null, null),
+  ('7b7d7bed-c9fb-409a-8681-ecafe79d94f2', '4eb9386f-b4cb-4b4a-aaea-5d6232ab820d', '2026-09-02', 1, 1, false, null, null, null),
+  ('6434f27a-6fb7-4fb2-ada5-6380ac18d864', '5c853979-ffa2-406f-8f24-963fda59e571', '2026-09-02', 2, 4, false, null, null, null),
+  ('e37e8a38-f4a8-4efb-ac3c-6c9fa05fda69', '93ada3f9-ddec-407c-b609-35f3f4134cfd', '2026-09-03', 0, 2, false, null, null, 'Customer Module'),
+  ('138436ec-bc02-4976-8316-5b4baee04d90', '93ada3f9-ddec-407c-b609-35f3f4134cfd', '2026-09-03', 1, 2, false, null, null, 'API Integration'),
+  ('20398e92-a6ae-4781-90df-d98d78359d31', '6adb0a51-1066-4f9f-9d77-65dc577229ae', '2026-09-03', 2, 1, false, null, null, null),
+  ('9f6b02a0-2099-47d7-8f80-b41ebb76edad', '93ada3f9-ddec-407c-b609-35f3f4134cfd', '2026-09-03', 3, 2, false, null, null, 'Testing'),
+  ('05ec3552-d002-4829-83db-379b64a5ad7f', '14df5500-5830-4eea-a53d-a3e9cfe86689', '2026-09-03', 4, 1, false, null, null, null),
+  ('87b1bb07-ae31-48cc-af80-4e4d7e048d9b', '06d6301a-e3bb-40b1-b3cb-2b4f9c656e72', '2026-09-04', 0, 2, false, null, null, null),
+  ('2024d02f-d0ec-4158-8266-03b30abc13d4', '6e7c7e2d-f047-4620-bc0a-32731a28b649', '2026-09-04', 1, 1, false, null, null, null),
+  ('1f40b8aa-bcd7-4d86-b0af-5d9909fe8d09', 'bd8b3b1f-ccab-424b-a539-e3af5e396d2b', '2026-09-04', 2, 3, false, null, null, null);

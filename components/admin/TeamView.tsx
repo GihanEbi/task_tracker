@@ -2,7 +2,6 @@
 
 import { useWorkTime } from "@/lib/scheduling/context";
 import { TODAY_KEY } from "@/lib/scheduling/dates";
-import { CURRENT_USER_ID } from "@/lib/scheduling/seed-data";
 import { Topbar } from "@/components/layout/Topbar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -27,7 +26,7 @@ export function TeamView() {
                 <div>
                   <div className="user-card-name">
                     {u.name}
-                    {u.id === CURRENT_USER_ID ? " · You" : ""}
+                    {u.id === store.state.currentUserId ? " · You" : ""}
                   </div>
                   <div className="user-card-role">{u.role}</div>
                 </div>

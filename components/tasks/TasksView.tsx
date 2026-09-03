@@ -2,13 +2,12 @@
 
 import { useWorkTime } from "@/lib/scheduling/context";
 import { keyToDate, fmtShort, relDay } from "@/lib/scheduling/dates";
-import { CURRENT_USER_ID } from "@/lib/scheduling/seed-data";
 import { Topbar } from "@/components/layout/Topbar";
 
 export function TasksView() {
   const store = useWorkTime();
   const tasks = store
-    .tasksForUser(CURRENT_USER_ID)
+    .tasksForUser(store.state.currentUserId)
     .slice()
     .sort((a, b) => keyToDate(a.deadline).getTime() - keyToDate(b.deadline).getTime());
 

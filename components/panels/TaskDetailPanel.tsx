@@ -2,7 +2,6 @@
 
 import { useWorkTime } from "@/lib/scheduling/context";
 import { fmtClock, fmtShort, keyToDate, relDay } from "@/lib/scheduling/dates";
-import { CURRENT_USER_ID } from "@/lib/scheduling/seed-data";
 import { Badge } from "@/components/ui/Badge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
@@ -13,7 +12,7 @@ export function TaskDetailPanel() {
   const task = store.taskById(taskId);
   if (!task) return null;
 
-  const isMine = task.userId === CURRENT_USER_ID;
+  const isMine = task.userId === store.state.currentUserId;
   const owner = store.userById(task.userId)!;
   const dstat = store.computeDeadlineStatus(task);
   const remaining = Math.max(0, task.estimatedHours - task.completedHours);
