@@ -1,6 +1,5 @@
 import {
   DaySummary,
-  DeadlineStatus,
   Project,
   ProjectStats,
   ScheduleBlock,
@@ -11,7 +10,7 @@ import {
   WorkloadSummary,
   WorkTimeState,
 } from "./types";
-import { addDays, fmtShort, isWorkday, keyToDate, t2m, TODAY_DATE } from "./dates";
+import { addDays, dkey, fmtShort, isWorkday, keyToDate, t2m } from "./dates";
 
 export function deriveWorkEnd(settings: WorkTimeState["settings"]) {
   const endM = t2m(settings.workStart) + settings.capacity * 60;
@@ -124,62 +123,18 @@ export function initials(name: string): string {
     .toUpperCase();
 }
 
-export function computeDeadlineStatus(state: WorkTimeState, task: Task): DeadlineStatus {
-  const remaining = Math.max(0, task.estimatedHours - task.completedHours);
-  if (remaining <= 0) return { level: "ok", label: "Complete", detail: "All estimated hours are logged for this task." };
-  const deadlineDate = keyToDate(task.deadline);
-  const isMine = task.userId === state.currentUserId;
-  const cap = isMine ? state.settings.capacity : (userById(state, task.userId)?.capacity ?? 8);
-  let cursor = new Date(Math.min(TODAY_DATE.getTime(), deadlineDate.getTime()));
-  let available = 0;
-  let guard = 0;
-  while (cursor <= deadlineDate && guard < 60) {
-    if (isWorkday(cursor)) {
-      const key = dkeyLocal(cursor);
-      const others = isMine
-        ? state.blocks.filter((b) => b.day === key && b.taskId !== task.id).reduce((s, b) => s + b.duration, 0)
-        : state.tasks
-            .filter((t) => t.userId === task.userId && t.assignedDay === key && t.id !== task.id)
-            .reduce((s, t) => s + t.estimatedHours, 0);
-      available += Math.max(0, cap - others);
-    }
-    cursor = addDays(cursor, 1);
-    guard++;
-  }
-  const spare = available - remaining;
-  if (spare >= 2) return { level: "ok", label: "On Track", detail: `The current schedule can complete this task before ${fmtShort(deadlineDate)}.` };
-  if (spare >= 0) return { level: "tight", label: "Tight Schedule", detail: `Only ${spare.toFixed(1)}h of spare capacity remains before ${fmtShort(deadlineDate)}.` };
-  return { level: "risk", label: "At Risk", detail: `This task needs ${remaining}h, but only ${available}h are available before ${fmtShort(deadlineDate)}.` };
+// Only meaningful for the signed-in user — teammates' schedule_blocks are
+// never loaded client-side, so there's no per-day data to summarize for them.
+export function summaryForUserDay(state: WorkTimeState, dayKey: string): WorkloadSummary {
+  const s = daySummary(state, dayKey);
+  return { key: s.key, scheduled: s.scheduled, capacity: s.capacity, overloaded: s.overloaded };
 }
 
-function dkeyLocal(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-export function summaryForUserDay(state: WorkTimeState, userId: string, dayKey: string): WorkloadSummary {
-  if (userId === state.currentUserId) {
-    const s = daySummary(state, dayKey);
-    return { key: s.key, scheduled: s.scheduled, capacity: s.capacity, overloaded: s.overloaded };
-  }
-  const user = userById(state, userId);
-  const list = state.tasks.filter((t) => t.userId === userId && t.assignedDay === dayKey);
-  const scheduled = list.reduce((s, t) => s + t.estimatedHours, 0);
-  const capacity = isWorkday(keyToDate(dayKey)) ? user?.capacity ?? 0 : 0;
-  const overloaded = Math.max(0, scheduled - capacity);
-  return { key: dayKey, scheduled, capacity, overloaded };
-}
-
-export function scheduleItemsForUserDay(state: WorkTimeState, userId: string, dayKey: string): ScheduleItem[] {
-  if (userId === state.currentUserId) {
-    return daySummary(state, dayKey).list.map((b) => {
-      const t = taskById(state, b.taskId)!;
-      return { title: blockLabel(state, b), project: t.project, duration: b.duration, priority: t.priority, status: t.status, overflow: b.overflow, taskId: t.id };
-    });
-  }
-  return state.tasks
-    .filter((t) => t.userId === userId && t.assignedDay === dayKey)
-    .map((t) => ({ title: t.title, project: t.project, duration: t.estimatedHours, priority: t.priority, status: t.status, overflow: false, taskId: t.id }));
+export function scheduleItemsForUserDay(state: WorkTimeState, dayKey: string): ScheduleItem[] {
+  return daySummary(state, dayKey).list.map((b) => {
+    const t = taskById(state, b.taskId)!;
+    return { title: blockLabel(state, b), project: t.project, duration: b.duration, priority: t.priority, overflow: b.overflow, taskId: t.id };
+  });
 }
 
 export function tasksForUser(state: WorkTimeState, userId: string): Task[] {
@@ -189,12 +144,54 @@ export function tasksForUser(state: WorkTimeState, userId: string): Task[] {
 export function projectStats(state: WorkTimeState, projectName: string): ProjectStats {
   const list = state.tasks.filter((t) => t.project === projectName);
   const totalEst = list.reduce((s, t) => s + t.estimatedHours, 0);
-  const totalDone = list.reduce((s, t) => s + Math.min(t.completedHours, t.estimatedHours), 0);
-  const pct = totalEst > 0 ? Math.round((totalDone / totalEst) * 100) : 0;
   const userIds = Array.from(new Set(list.map((t) => t.userId)));
-  return { list, count: list.length, totalEst, totalDone, pct, userIds };
+  return { list, count: list.length, totalEst, userIds };
 }
 
 export function projectByName(state: WorkTimeState, name: string): Project | undefined {
   return state.projects.find((p) => p.name === name);
+}
+
+export interface DerivedDayBucket {
+  key: string;
+  tasks: Task[];
+  scheduled: number;
+  capacity: number;
+  overloaded: number;
+}
+
+// Teammates have no persisted per-day schedule (only the signed-in user's own
+// tasks have real schedule_blocks). To show a "today" view for them anyway,
+// greedily pack their tasks — oldest created first — into consecutive
+// working days against their daily capacity, mirroring how the real
+// timeline overflows work into the next working day when capacity runs out.
+export function deriveDailyBuckets(tasks: Task[], capacity: number, startKey: string): DerivedDayBucket[] {
+  const ordered = [...tasks].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const buckets: DerivedDayBucket[] = [];
+  let cursor = keyToDate(startKey);
+  while (!isWorkday(cursor)) cursor = addDays(cursor, 1);
+  let bucket: DerivedDayBucket = { key: dkey(cursor), tasks: [], scheduled: 0, capacity, overloaded: 0 };
+
+  for (const task of ordered) {
+    if (bucket.tasks.length > 0 && bucket.scheduled + task.estimatedHours > capacity) {
+      bucket.overloaded = Math.max(0, bucket.scheduled - capacity);
+      buckets.push(bucket);
+      do {
+        cursor = addDays(cursor, 1);
+      } while (!isWorkday(cursor));
+      bucket = { key: dkey(cursor), tasks: [], scheduled: 0, capacity, overloaded: 0 };
+    }
+    bucket.tasks.push(task);
+    bucket.scheduled += task.estimatedHours;
+  }
+  bucket.overloaded = Math.max(0, bucket.scheduled - capacity);
+  buckets.push(bucket);
+  return buckets;
+}
+
+export function todayBucketForUser(state: WorkTimeState, userId: string, todayKey: string): DerivedDayBucket {
+  const capacity = userById(state, userId)?.capacity ?? 0;
+  const [first] = deriveDailyBuckets(tasksForUser(state, userId), capacity, todayKey);
+  if (first.key === todayKey) return first;
+  return { key: todayKey, tasks: [], scheduled: 0, capacity: isWorkday(keyToDate(todayKey)) ? capacity : 0, overloaded: 0 };
 }

@@ -7,6 +7,8 @@ import { ToastContainer } from "@/components/ui/ToastContainer";
 import { AddTaskModal } from "@/components/modals/AddTaskModal";
 import { AddUserModal } from "@/components/modals/AddUserModal";
 import { AddProjectModal } from "@/components/modals/AddProjectModal";
+import { AdminTaskModal } from "@/components/modals/AdminTaskModal";
+import { EditTaskModal } from "@/components/modals/EditTaskModal";
 import { TaskDetailPanel } from "@/components/panels/TaskDetailPanel";
 import { UserDetailPanel } from "@/components/panels/UserDetailPanel";
 import { ProjectDetailPanel } from "@/components/panels/ProjectDetailPanel";
@@ -23,6 +25,8 @@ function Overlays() {
       {store.ui.userDetail && <UserDetailPanel />}
       {store.ui.projectDetail && <ProjectDetailPanel />}
       {store.ui.quickInsert && <QuickInsertPopover key={store.ui.quickInsertKey} qi={store.ui.quickInsert} />}
+      {store.ui.adminTask && <AdminTaskModal key={store.ui.adminTaskKey} opts={store.ui.adminTask} />}
+      {store.ui.editTask && <EditTaskModal key={store.ui.editTaskKey} opts={store.ui.editTask} />}
       <ToastContainer />
     </>
   );

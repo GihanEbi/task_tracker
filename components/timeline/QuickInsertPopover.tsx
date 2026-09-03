@@ -30,6 +30,8 @@ export function QuickInsertPopover({ qi }: { qi: QuickInsertState }) {
     };
   }, [store]);
 
+  const projectName = store.state.projects.find((p) => p.name === "General")?.name ?? store.state.projects[0]?.name;
+
   function submit() {
     const trimmed = title.trim();
     if (!trimmed) {
@@ -37,8 +39,12 @@ export function QuickInsertPopover({ qi }: { qi: QuickInsertState }) {
       titleRef.current?.focus();
       return;
     }
+    if (!projectName) {
+      store.closeQuickInsert();
+      return;
+    }
     const dur = Math.max(0.5, duration || 1);
-    store.createTaskAndInsert({ title: trimmed, project: "General", description: "", priority, duration: dur, deadline: qi.day, day: qi.day, position: qi.position });
+    store.createTaskAndInsert({ title: trimmed, project: projectName, description: "", priority, duration: dur, day: qi.day, position: qi.position });
     store.closeQuickInsert();
   }
 

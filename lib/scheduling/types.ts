@@ -1,6 +1,4 @@
 export type Priority = "High" | "Medium" | "Low";
-export type TaskStatus = "Planned" | "In Progress" | "Completed";
-export type DeadlineLevel = "ok" | "tight" | "risk";
 export type WorkloadStatus = "ok" | "tight" | "risk";
 
 export interface Settings {
@@ -18,6 +16,7 @@ export interface User {
   email: string;
   capacity: number; // hours/day
   color: string;
+  isAdmin: boolean;
 }
 
 export interface Project {
@@ -33,12 +32,12 @@ export interface Task {
   project: string; // project name
   description: string;
   estimatedHours: number;
-  completedHours: number;
-  deadline: string; // day key
   priority: Priority;
-  status: TaskStatus;
   userId: string;
-  assignedDay?: string; // day key — teammate tasks only (no draggable blocks)
+  createdAt: string; // ISO timestamp
+  createdBy: string; // user id
+  updatedAt: string; // ISO timestamp
+  updatedBy: string; // user id
 }
 
 export interface ScheduleBlock {
@@ -94,22 +93,13 @@ export interface ScheduleItem {
   project: string;
   duration: number;
   priority: Priority;
-  status: TaskStatus;
   overflow: boolean;
   taskId: string;
-}
-
-export interface DeadlineStatus {
-  level: DeadlineLevel;
-  label: string;
-  detail: string;
 }
 
 export interface ProjectStats {
   list: Task[];
   count: number;
   totalEst: number;
-  totalDone: number;
-  pct: number;
   userIds: string[];
 }

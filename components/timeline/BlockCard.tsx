@@ -1,7 +1,7 @@
 "use client";
 
 import { ScheduleBlock, Task } from "@/lib/scheduling/types";
-import { fmtClock, fmtShort, keyToDate } from "@/lib/scheduling/dates";
+import { fmtClock } from "@/lib/scheduling/dates";
 
 export function BlockCard({
   block,
@@ -59,7 +59,6 @@ export function BlockCard({
             <span className={`prio-dot prio-${task.priority}`}></span>
             {task.priority}
           </span>
-          <span className="block-chip">due {fmtShort(keyToDate(task.deadline))}</span>
         </div>
       </div>
     </div>

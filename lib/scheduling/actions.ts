@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { getOrCreateAppUser } from "./current-user";
 import { USER_COLOR_PALETTE } from "./palette";
 import * as engine from "./engine";
-import { dkey, fmtShort, keyToDate, nextWorkday } from "./dates";
+import { dkey, fmtShort, isWorkday, keyToDate, nextWorkday, TODAY_KEY } from "./dates";
 import { HistoryEntry, Priority, Project, ScheduleBlock, Task, User, WorkTimeState } from "./types";
 
 type SupabaseAdmin = ReturnType<typeof createSupabaseAdminClient>;
@@ -19,6 +19,7 @@ interface UserRow {
   email: string;
   capacity: number | string;
   color: string;
+  is_admin: boolean;
 }
 interface ProjectRow {
   id: string;
@@ -31,12 +32,12 @@ interface TaskRow {
   title: string;
   description: string;
   estimated_hours: number | string;
-  completed_hours: number | string;
-  deadline: string;
   priority: string;
-  status: string;
   user_id: string;
-  assigned_day: string | null;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
   projects: { name: string } | null;
 }
 interface BlockRow {
@@ -64,7 +65,7 @@ interface OrderRow {
 }
 
 function mapUserRow(r: UserRow): User {
-  return { id: r.id, name: r.name, role: r.role, department: r.department, email: r.email, capacity: Number(r.capacity), color: r.color };
+  return { id: r.id, name: r.name, role: r.role, department: r.department, email: r.email, capacity: Number(r.capacity), color: r.color, isAdmin: r.is_admin };
 }
 function mapProjectRow(r: ProjectRow): Project {
   return { id: r.id, name: r.name, color: r.color, description: r.description };
@@ -76,12 +77,12 @@ function mapTaskRow(r: TaskRow): Task {
     project: r.projects?.name ?? "",
     description: r.description,
     estimatedHours: Number(r.estimated_hours),
-    completedHours: Number(r.completed_hours),
-    deadline: r.deadline,
     priority: r.priority as Priority,
-    status: r.status as Task["status"],
     userId: r.user_id,
-    assignedDay: r.assigned_day ?? undefined,
+    createdAt: r.created_at,
+    createdBy: r.created_by,
+    updatedAt: r.updated_at,
+    updatedBy: r.updated_by,
   };
 }
 function mapBlockRow(r: BlockRow): ScheduleBlock {
@@ -117,6 +118,61 @@ async function getOwnedTask(supabase: SupabaseAdmin, taskId: string, userId: str
   return data;
 }
 
+// Admins manage teammates' flat task list from Team, never their own —
+// their own tasks are block-scheduled and editing estimated_hours here
+// would desync schedule_blocks.duration with no recalculation path.
+async function getAdminManagedTask(supabase: SupabaseAdmin, taskId: string, adminUserId: string) {
+  const { data, error } = await supabase.from("tasks").select("*").eq("id", taskId).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Task not found.");
+  if (data.user_id === adminUserId) throw new Error("Manage your own tasks from Today.");
+  return data;
+}
+
+interface SettingsRow {
+  work_start: string;
+  capacity: number | string;
+  default_slot: number | string;
+}
+
+// user_settings rows are supposed to be created alongside the user (see
+// getOrCreateAppUser), but self-heal here too in case that insert was ever
+// skipped or failed, so a missing row never crashes the app.
+async function getOrCreateUserSettings(supabase: SupabaseAdmin, userId: string): Promise<SettingsRow> {
+  const { data: existing } = await supabase.from("user_settings").select("*").eq("user_id", userId).maybeSingle();
+  if (existing) return existing as SettingsRow;
+
+  const { data: created, error } = await supabase
+    .from("user_settings")
+    .insert({ user_id: userId, work_start: "09:00", capacity: 8, default_slot: 60 })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return created as SettingsRow;
+}
+
+// Finds the first working day (starting today) with room for `duration` hours
+// against the user's daily `capacity` — an empty day is always accepted even
+// if the task alone exceeds capacity (mirrors how a lone oversized block
+// behaves for a self-created task, which just gets marked overflow in place).
+async function findNextAvailableDay(supabase: SupabaseAdmin, userId: string, duration: number, capacity: number): Promise<string> {
+  const { data: rows } = await supabase.from("schedule_blocks").select("day, duration, tasks!inner(user_id)").eq("tasks.user_id", userId);
+  const totals = new Map<string, number>();
+  ((rows ?? []) as { day: string; duration: number | string }[]).forEach((b) => {
+    totals.set(b.day, (totals.get(b.day) ?? 0) + Number(b.duration));
+  });
+
+  let cursor = keyToDate(TODAY_KEY);
+  while (!isWorkday(cursor)) cursor = nextWorkday(cursor);
+  for (let i = 0; i < 365; i++) {
+    const key = dkey(cursor);
+    const used = totals.get(key) ?? 0;
+    if (used === 0 || used + duration <= capacity) return key;
+    cursor = nextWorkday(cursor);
+  }
+  return dkey(cursor);
+}
+
 async function renormalizeDayOrder(supabase: SupabaseAdmin, userId: string, day: string) {
   const { data } = await supabase.from("schedule_blocks").select("id, order, tasks!inner(user_id)").eq("day", day).eq("tasks.user_id", userId).order("order", { ascending: true });
   await Promise.all((data ?? []).map((r: OrderRow, idx: number) => supabase.from("schedule_blocks").update({ order: idx }).eq("id", r.id)));
@@ -126,8 +182,8 @@ async function renormalizeDayOrder(supabase: SupabaseAdmin, userId: string, day:
 // same engine as the client, then persists whatever changed and logs history —
 // the server never trusts client-sent overflow/start/end values.
 async function recalcAndPersist(supabase: SupabaseAdmin, userId: string, logChanges: boolean) {
-  const { data: settingsRow } = await supabase.from("user_settings").select("*").eq("user_id", userId).single();
-  const settings = { workStart: settingsRow.work_start, workEnd: "", capacity: Number(settingsRow.capacity), defaultSlot: settingsRow.default_slot };
+  const settingsRow = await getOrCreateUserSettings(supabase, userId);
+  const settings = { workStart: settingsRow.work_start, workEnd: "", capacity: Number(settingsRow.capacity), defaultSlot: Number(settingsRow.default_slot) };
   engine.deriveWorkEnd(settings);
 
   const { data: blockRows } = await supabase.from("schedule_blocks").select("*, tasks!inner(user_id)").eq("tasks.user_id", userId);
@@ -157,17 +213,19 @@ export async function loadWorkTimeState(): Promise<WorkTimeState> {
   const appUser = await getOrCreateAppUser();
   const supabase = createSupabaseAdminClient();
 
-  const [{ data: userRows }, { data: projectRows }, { data: settingsRow }, { data: ownTaskRows }, { data: teammateTaskRows }, { data: blockRows }, { data: historyRows }] = await Promise.all([
+  const [{ data: userRows }, { data: projectRows }, settingsRow, { data: ownTaskRows }, { data: teammateTaskRows }, { data: blockRows }, { data: historyRows }] = await Promise.all([
     supabase.from("users").select("*").order("created_at"),
     supabase.from("projects").select("*").order("name"),
-    supabase.from("user_settings").select("*").eq("user_id", appUser.id).single(),
-    supabase.from("tasks").select("*, projects(name)").eq("user_id", appUser.id),
-    supabase.from("tasks").select("*, projects(name)").neq("user_id", appUser.id).not("assigned_day", "is", null),
+    getOrCreateUserSettings(supabase, appUser.id),
+    supabase.from("tasks").select("*, projects(name)").eq("user_id", appUser.id).order("created_at", { ascending: false }),
+    // Teammates' tasks are visible org-wide (what everyone is currently working on),
+    // but their schedule_blocks are not — there is no per-day timeline for them here.
+    supabase.from("tasks").select("*, projects(name)").neq("user_id", appUser.id).order("created_at", { ascending: false }),
     supabase.from("schedule_blocks").select("*, tasks!inner(user_id)").eq("tasks.user_id", appUser.id),
     supabase.from("schedule_history").select("*, tasks!inner(user_id)").eq("tasks.user_id", appUser.id).order("ts", { ascending: false }),
   ]);
 
-  const settings = { workStart: settingsRow!.work_start, workEnd: "", capacity: Number(settingsRow!.capacity), defaultSlot: settingsRow!.default_slot };
+  const settings = { workStart: settingsRow.work_start, workEnd: "", capacity: Number(settingsRow.capacity), defaultSlot: Number(settingsRow.default_slot) };
   engine.deriveWorkEnd(settings);
 
   return {
@@ -191,7 +249,6 @@ export interface CreateTaskActionInput {
   description: string;
   priority: Priority;
   duration: number;
-  deadline: string;
   day: string;
   position: string; // block id, or "end"
 }
@@ -209,11 +266,10 @@ export async function createTaskAction(input: CreateTaskActionInput) {
     project_id: project.id,
     description: input.description,
     estimated_hours: input.duration,
-    completed_hours: 0,
-    deadline: input.deadline,
     priority: input.priority,
-    status: "Planned",
     user_id: appUser.id,
+    created_by: appUser.id,
+    updated_by: appUser.id,
   });
   if (taskError) throw taskError;
 
@@ -280,13 +336,44 @@ export async function commitOrderAction(day: string, orderedBlockIds: string[]) 
   await recalcAndPersist(supabase, appUser.id, true);
 }
 
-export async function markCompleteAction(taskId: string) {
+export interface UpdateTaskActionInput {
+  taskId: string;
+  title: string;
+  project: string;
+  description: string;
+  priority: Priority;
+  duration: number;
+}
+
+export async function updateTaskAction(input: UpdateTaskActionInput) {
   const appUser = await getOrCreateAppUser();
   const supabase = createSupabaseAdminClient();
+  await getOwnedTask(supabase, input.taskId, appUser.id);
 
-  const task = await getOwnedTask(supabase, taskId, appUser.id);
-  const { error } = await supabase.from("tasks").update({ completed_hours: task.estimated_hours, status: "Completed" }).eq("id", taskId);
-  if (error) throw error;
+  const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
+  if (!project) throw new Error(`Unknown project "${input.project}".`);
+
+  const { error: taskError } = await supabase
+    .from("tasks")
+    .update({
+      title: input.title,
+      project_id: project.id,
+      description: input.description,
+      estimated_hours: input.duration,
+      priority: input.priority,
+      updated_by: appUser.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.taskId);
+  if (taskError) throw taskError;
+
+  const { data: blockRows } = await supabase.from("schedule_blocks").select("id").eq("task_id", input.taskId);
+  if ((blockRows ?? []).length === 1) {
+    const { error: blockError } = await supabase.from("schedule_blocks").update({ duration: input.duration }).eq("id", blockRows![0].id);
+    if (blockError) throw blockError;
+  }
+
+  await recalcAndPersist(supabase, appUser.id, true);
 }
 
 export async function deleteTaskAction(taskId: string) {
@@ -308,8 +395,7 @@ export async function saveSettingsAction(next: { workStart: string; capacity: nu
 
   const { error } = await supabase
     .from("user_settings")
-    .update({ work_start: next.workStart, capacity: next.capacity, default_slot: next.defaultSlot })
-    .eq("user_id", appUser.id);
+    .upsert({ user_id: appUser.id, work_start: next.workStart, capacity: next.capacity, default_slot: next.defaultSlot }, { onConflict: "user_id" });
   if (error) throw error;
 
   await recalcAndPersist(supabase, appUser.id, true);
@@ -353,4 +439,111 @@ export async function addProjectAction(input: { id: string; name: string; descri
 
   const { error } = await supabase.from("projects").insert({ id: input.id, name: input.name, color: input.color, description: input.description });
   if (error) throw error;
+}
+
+export async function setUserAdminAction(userId: string, isAdmin: boolean) {
+  const appUser = await requireAdmin();
+  if (userId === appUser.id && !isAdmin) throw new Error("You can't remove your own admin access.");
+
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.from("users").update({ is_admin: isAdmin }).eq("id", userId);
+  if (error) throw error;
+}
+
+// ---------------- admin: managing a teammate's tasks (from Team) ----------------
+
+export interface AdminTaskActionInput {
+  title: string;
+  project: string;
+  description: string;
+  priority: Priority;
+  estimatedHours: number;
+}
+
+export async function adminCreateTaskAction(input: AdminTaskActionInput & { taskId: string; userId: string }) {
+  const appUser = await requireAdmin();
+  if (input.userId === appUser.id) throw new Error("Manage your own tasks from Today.");
+  const supabase = createSupabaseAdminClient();
+
+  const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
+  if (!project) throw new Error(`Unknown project "${input.project}".`);
+
+  const { error: taskError } = await supabase.from("tasks").insert({
+    id: input.taskId,
+    title: input.title,
+    project_id: project.id,
+    description: input.description,
+    estimated_hours: input.estimatedHours,
+    priority: input.priority,
+    user_id: input.userId,
+    created_by: appUser.id,
+    updated_by: appUser.id,
+  });
+  if (taskError) throw taskError;
+
+  // Give it a real schedule_block too, or it never shows up on the
+  // teammate's own Today/Calendar — those render from blocks, not the flat
+  // task list. Placed at the teammate's next available slot (their own
+  // existing schedule), same as a self-created task landing at day's end.
+  const settingsRow = await getOrCreateUserSettings(supabase, input.userId);
+  const day = await findNextAvailableDay(supabase, input.userId, input.estimatedHours, Number(settingsRow.capacity));
+
+  const { data: dayBlocks } = await supabase.from("schedule_blocks").select("id, order, tasks!inner(user_id)").eq("day", day).eq("tasks.user_id", input.userId);
+  const maxOrder = Math.max(-1, ...((dayBlocks ?? []) as OrderRow[]).map((b) => Number(b.order)));
+
+  const { error: blockError } = await supabase.from("schedule_blocks").insert({
+    id: crypto.randomUUID(),
+    task_id: input.taskId,
+    day,
+    order: maxOrder + 1,
+    duration: input.estimatedHours,
+    overflow: false,
+  });
+  if (blockError) throw blockError;
+
+  await recalcAndPersist(supabase, input.userId, true);
+}
+
+export async function adminUpdateTaskAction(input: AdminTaskActionInput & { taskId: string; reassignTo?: string }) {
+  const appUser = await requireAdmin();
+  const supabase = createSupabaseAdminClient();
+  const existing = await getAdminManagedTask(supabase, input.taskId, appUser.id);
+
+  const { data: project } = await supabase.from("projects").select("id").eq("name", input.project).maybeSingle();
+  if (!project) throw new Error(`Unknown project "${input.project}".`);
+
+  const { error: taskError } = await supabase
+    .from("tasks")
+    .update({
+      title: input.title,
+      project_id: project.id,
+      description: input.description,
+      estimated_hours: input.estimatedHours,
+      priority: input.priority,
+      ...(input.reassignTo ? { user_id: input.reassignTo } : {}),
+      updated_by: appUser.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.taskId);
+  if (taskError) throw taskError;
+
+  const ownerId = input.reassignTo ?? existing.user_id;
+  const { data: blockRows } = await supabase.from("schedule_blocks").select("id").eq("task_id", input.taskId);
+  if ((blockRows ?? []).length === 1) {
+    const { error: blockError } = await supabase.from("schedule_blocks").update({ duration: input.estimatedHours }).eq("id", blockRows![0].id);
+    if (blockError) throw blockError;
+  }
+
+  await recalcAndPersist(supabase, ownerId, true);
+}
+
+export async function adminDeleteTaskAction(taskId: string) {
+  const appUser = await requireAdmin();
+  const supabase = createSupabaseAdminClient();
+  const existing = await getAdminManagedTask(supabase, taskId, appUser.id);
+
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+  if (error) throw error;
+
+  await recalcAndPersist(supabase, existing.user_id, true);
 }

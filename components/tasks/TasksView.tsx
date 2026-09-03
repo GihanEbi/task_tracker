@@ -1,7 +1,7 @@
 "use client";
 
 import { useWorkTime } from "@/lib/scheduling/context";
-import { keyToDate, fmtShort, relDay } from "@/lib/scheduling/dates";
+import { relDay } from "@/lib/scheduling/dates";
 import { Topbar } from "@/components/layout/Topbar";
 
 export function TasksView() {
@@ -9,7 +9,7 @@ export function TasksView() {
   const tasks = store
     .tasksForUser(store.state.currentUserId)
     .slice()
-    .sort((a, b) => keyToDate(a.deadline).getTime() - keyToDate(b.deadline).getTime());
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <>
@@ -21,8 +21,7 @@ export function TasksView() {
               <th>Task</th>
               <th>Project</th>
               <th>Duration</th>
-              <th>Deadline</th>
-              <th>Status</th>
+              <th>Priority</th>
               <th>Schedule</th>
             </tr>
           </thead>
@@ -42,9 +41,8 @@ export function TasksView() {
                   </td>
                   <td>{task.project}</td>
                   <td>{task.estimatedHours}h</td>
-                  <td>{fmtShort(keyToDate(task.deadline))}</td>
                   <td>
-                    <span className="badge b-neutral">{task.status}</span>
+                    <span className="badge b-neutral">{task.priority}</span>
                   </td>
                   <td>{schedule}</td>
                 </tr>

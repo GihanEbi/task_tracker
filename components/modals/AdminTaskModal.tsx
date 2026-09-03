@@ -3,54 +3,47 @@
 import { useState } from "react";
 import { useWorkTime } from "@/lib/scheduling/context";
 import { Priority } from "@/lib/scheduling/types";
-import { AddTaskModalState } from "@/lib/scheduling/store";
+import { AdminTaskModalState } from "@/lib/scheduling/store";
 
-// Remounted (via a `key` from the store) each time it's opened, so every field's
-// initial value below only needs to be computed once per open — no reset effect.
-export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
+// Remounted (via a `key` from the store) each time it's opened, so plain
+// useState defaults below are enough — no reset effect needed.
+export function AdminTaskModal({ opts }: { opts: AdminTaskModalState }) {
   const store = useWorkTime();
-  const initialDay = opts.day || store.viewedKey;
-  const hasPrefill = opts.title !== undefined;
+  const user = store.userById(opts.userId);
+  const editingTask = opts.taskId ? store.taskById(opts.taskId) : undefined;
+  const isEdit = !!editingTask;
 
   const projectNames = store.state.projects.map((p) => p.name);
-  const preferredProject = hasPrefill ? "General" : "Sales";
-  const defaultProject = projectNames.includes(preferredProject) ? preferredProject : (projectNames[0] ?? "");
+  const defaultProject = editingTask?.project ?? projectNames[0] ?? "";
 
-  const [title, setTitle] = useState(hasPrefill ? opts.title! : "");
+  const [title, setTitle] = useState(editingTask?.title ?? "");
   const [project, setProject] = useState(defaultProject);
-  const [priority, setPriority] = useState<Priority>("High");
-  const [description, setDescription] = useState("");
-  const [duration, setDuration] = useState(2);
-
-  // Deadline, scheduled day, and timeline position are no longer user-editable
-  // in this modal — new tasks always land at the end of the user's current day.
-  const day = initialDay;
-  const position = "end";
+  const [priority, setPriority] = useState<Priority>(editingTask?.priority ?? "High");
+  const [description, setDescription] = useState(editingTask?.description ?? "");
+  const [duration, setDuration] = useState(editingTask?.estimatedHours ?? 2);
+  const [reassignTo, setReassignTo] = useState(editingTask?.userId ?? opts.userId);
 
   function close() {
-    store.closeAddModal();
+    store.closeAdminTaskModal();
   }
 
   function submit() {
     const trimmedTitle = title.trim() || "Untitled task";
     const dur = Math.max(0.5, duration || 1);
     close();
-    store.createTaskAndInsert({
-      title: trimmedTitle,
-      project,
-      description: description.trim(),
-      priority,
-      duration: dur,
-      day,
-      position,
-    });
+    const input = { title: trimmedTitle, project, description: description.trim(), priority, estimatedHours: dur };
+    if (isEdit && editingTask) {
+      store.adminUpdateTask(editingTask.id, { ...input, reassignTo });
+    } else {
+      store.adminCreateTask(opts.userId, input);
+    }
   }
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && close()}>
       <div className="modal">
         <div className="modal-head">
-          <h2>Add task</h2>
+          <h2>{isEdit ? "Edit task" : `Add task for ${user?.name.split(" ")[0] ?? "teammate"}`}</h2>
           <button className="modal-close" onClick={close}>
             ✕
           </button>
@@ -64,7 +57,7 @@ export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
             <div className="field">
               <label>Project</label>
               {projectNames.length === 0 ? (
-                <p className="field-hint">No projects yet — ask an admin to create one before scheduling tasks.</p>
+                <p className="field-hint">No projects yet — create one before assigning tasks.</p>
               ) : (
                 <select value={project} onChange={(e) => setProject(e.target.value)}>
                   {store.state.projects.map((p) => (
@@ -92,13 +85,25 @@ export function AddTaskModal({ opts }: { opts: AddTaskModalState }) {
             <label>Estimated duration (hours)</label>
             <input type="number" min={0.5} step={0.5} value={duration} placeholder="e.g. 2" onChange={(e) => setDuration(parseFloat(e.target.value))} />
           </div>
+          {isEdit && (
+            <div className="field">
+              <label>Reassign to</label>
+              <select value={reassignTo} onChange={(e) => setReassignTo(e.target.value)}>
+                {store.state.users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="modal-foot">
           <button className="btn secondary" onClick={close}>
             Cancel
           </button>
           <button className="btn" onClick={submit} disabled={!project}>
-            Add to schedule
+            {isEdit ? "Save changes" : "Add task"}
           </button>
         </div>
       </div>

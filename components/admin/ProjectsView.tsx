@@ -2,7 +2,6 @@
 
 import { useWorkTime } from "@/lib/scheduling/context";
 import { Topbar } from "@/components/layout/Topbar";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 
 export function ProjectsView() {
@@ -20,12 +19,10 @@ export function ProjectsView() {
               <div className="project-card-body">
                 <div className="project-card-name">{p.name}</div>
                 <div className="project-card-desc">{p.description || ""}</div>
-                <ProgressBar pct={stats.pct} color={p.color} />
                 <div className="project-card-meta">
                   <span>
                     {stats.count} task{stats.count === 1 ? "" : "s"} · {stats.totalEst}h
                   </span>
-                  <span>{stats.pct}%</span>
                 </div>
                 <div className="avatar-stack">
                   {stats.userIds.map((uid) => {
